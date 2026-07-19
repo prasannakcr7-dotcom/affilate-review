@@ -87,7 +87,7 @@ const reviewSchema = {
 	},
 	publisher: {
 		'@type': 'Organization',
-		name: country === 'in' ? 'SecondLook India' : 'SecondLook',
+		name: 'SecondLook',
 		logo: {
 			'@type': 'ImageObject',
 			url: `${siteUrl}/favicon.svg`
@@ -167,12 +167,12 @@ const slugify = (text: string) =>
 			<section class="score-summary" id="scores">
 				<div class="meta-line">
 					<p><strong>Price:</strong> {primaryProduct.price} List <span class="stars">★★★★</span></p>
-					<p><strong>Manufacturer:</strong> <a href={getLocalizedPath(`/brands/${primaryProduct.brand.toLowerCase()}`, country)}>{primaryProduct.brand}</a></p>
+					<p><strong>Manufacturer:</strong> <a href={getLocalizedPath(`/reviews?q=${primaryProduct.brand.toLowerCase()}`, country)}>{primaryProduct.brand}</a></p>
 				</div>
 
 				<div class="author-row">
 					<img src="/blog-placeholder-about.jpg" alt="" width="56" height="56" />
-					<p>By <a href={getLocalizedPath("/about", country)}>{country === 'in' ? 'SecondLook India' : 'SecondLook'}</a> · Review Editor · {new Date(review.publishDate).toLocaleDateString(country === 'in' ? 'en-IN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+					<p>By <a href={getLocalizedPath("/about", country)}>SecondLook</a> · Review Editor · {new Date(review.publishDate).toLocaleDateString(country === 'in' ? 'en-IN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 				</div>
 
 				<div class="score-card">
