@@ -1,0 +1,447 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import { getLocalizedProduct, getLocalizedPath } from '../../data/reviews';
+
+export async function getStaticPaths() {
+	return [
+		{ params: { country: 'in' } },       // India
+	];
+}
+
+const country = (Astro.params.country as 'us' | 'in') || 'us';
+
+const reviewEntries = await getCollection('reviews');
+const filteredEntries = reviewEntries.filter((entry) => {
+	const markets = entry.data.markets || ['us', 'in'];
+	return markets.includes(country);
+});
+const sortedReviews = filteredEntries.sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf());
+
+// Helper to format date
+const formatDate = (date: Date) => {
+	return date.toLocaleDateString(country === 'in' ? 'en-IN' : 'en-US', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
+	});
+};
+
+// Map collection reviews to output format
+const allReviewsData = sortedReviews.map((entry) => {
+	const rawProduct = entry.data.products.find(p => p.id === entry.data.primaryProductId) || entry.data.products[0];
+	const primaryProduct = getLocalizedProduct(rawProduct, country);
+	return {
+		category: entry.data.category,
+		title: entry.data.title,
+		date: formatDate(entry.data.publishDate),
+		summary: entry.data.summary,
+		price: `Best Pick: ${primaryProduct.price}`,
+		brand: primaryProduct.brand || '',
+		image: entry.data.heroImage,
+		href: getLocalizedPath(`/reviews/${entry.id}`, country),
+	};
+});
+---
+
+<BaseLayout title={country === 'in' ? "All Product Reviews | SecondLook India" : "All Product Reviews | SecondLook"} description="Search and browse all our independent product reviews and buying guides." country={country}>
+	<section class="reviews-library">
+		<header class="library-header">
+			<span class="sub">Product Library</span>
+			<h1>All Product Reviews</h1>
+			<p class="lead">Search and browse all our independent buying guides and comparison tables.</p>
+			
+			<div class="search-page-bar">
+				<div class="input-wrapper">
+					<input type="search" id="page-search-input" placeholder="Search by name, category, or brand..." aria-label="Search reviews" autofocus />
+					<svg class="search-icon" aria-hidden="true" viewBox="0 0 24 24">
+						<path d="m21 21-4.3-4.3m1.3-5.7a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"></path>
+					</svg>
+				</div>
+				<span class="search-count" id="search-count">Showing {allReviewsData.length} reviews</span>
+			</div>
+		</header>
+
+		<div class="review-grid" id="reviews-grid">
+			{
+				allReviewsData.map((review) => (
+					<article class="review-card" data-title={review.title.toLowerCase()} data-category={review.category.toLowerCase()} data-brand={review.brand.toLowerCase()} data-summary={review.summary.toLowerCase()}>
+						<a href={review.href} class="review-image">
+							<img src={review.image} alt="" loading="lazy" width="360" height="230" />
+						</a>
+						<div class="review-card-copy">
+							<span class="category-tag">{review.category}</span>
+							<h3><a href={review.href}>{review.title}</a></h3>
+							<time>{review.date}</time>
+							<p>{review.summary}</p>
+							<strong>{review.price}</strong>
+							<a class="read-link" href={review.href}>Read Review &gt;</a>
+						</div>
+					</article>
+				))
+			}
+		</div>
+
+		<div class="empty-search-state" id="empty-state" style="display: none;">
+			<h2>No reviews match your search</h2>
+			<p>Try searching for a different keyword, category, or brand name.</p>
+		</div>
+
+		<div class="pagination-controls" id="pagination-controls">
+			<button id="btn-prev" class="btn-pagination" disabled>&lt; Previous</button>
+			<span id="page-indicator">Page 1 of 1</span>
+			<button id="btn-next" class="btn-pagination" disabled>Next &gt;</button>
+		</div>
+	</section>
+</BaseLayout>
+
+<script is:inline>
+	document.addEventListener('DOMContentLoaded', () => {
+		const searchInput = document.getElementById('page-search-input');
+		const searchCount = document.getElementById('search-count');
+		const reviewsGrid = document.getElementById('reviews-grid');
+		const emptyState = document.getElementById('empty-state');
+		const btnPrev = document.getElementById('btn-prev');
+		const btnNext = document.getElementById('btn-next');
+		const pageIndicator = document.getElementById('page-indicator');
+
+		const cards = Array.from(document.querySelectorAll('.review-card'));
+		const itemsPerPage = 8;
+		let currentPage = 1;
+		let filteredCards = [...cards];
+
+		function filterAndPaginate() {
+			const query = searchInput.value.toLowerCase().trim();
+			
+			// 1. Filter
+			filteredCards = cards.filter(card => {
+				const title = card.getAttribute('data-title') || '';
+				const category = card.getAttribute('data-category') || '';
+				const brand = card.getAttribute('data-brand') || '';
+				const summary = card.getAttribute('data-summary') || '';
+				return title.includes(query) || category.includes(query) || brand.includes(query) || summary.includes(query);
+			});
+
+			// 2. Update search query in URL
+			const url = new URL(window.location.href);
+			if (query) {
+				url.searchParams.set('q', query);
+			} else {
+				url.searchParams.delete('q');
+			}
+			window.history.replaceState({}, '', url.toString());
+
+			// 3. Update count
+			searchCount.textContent = `Showing ${filteredCards.length} review${filteredCards.length === 1 ? '' : 's'}`;
+
+			// 4. Update empty state
+			if (filteredCards.length === 0) {
+				emptyState.style.display = 'block';
+				reviewsGrid.style.display = 'none';
+				pageIndicator.textContent = 'Page 0 of 0';
+				btnPrev.disabled = true;
+				btnNext.disabled = true;
+				return;
+			} else {
+				emptyState.style.display = 'none';
+				reviewsGrid.style.display = 'grid';
+			}
+
+			// 5. Calculate pages
+			const totalPages = Math.ceil(filteredCards.length / itemsPerPage);
+			if (currentPage > totalPages) {
+				currentPage = totalPages || 1;
+			}
+
+			// 6. Paginate visible/hidden cards
+			const startIndex = (currentPage - 1) * itemsPerPage;
+			const endIndex = startIndex + itemsPerPage;
+
+			cards.forEach(card => {
+				card.style.display = 'none';
+			});
+
+			filteredCards.forEach((card, index) => {
+				if (index >= startIndex && index < endIndex) {
+					card.style.display = 'block';
+				}
+			});
+
+			// 7. Update controls
+			pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+			btnPrev.disabled = currentPage === 1;
+			btnNext.disabled = currentPage === totalPages;
+		}
+
+		// Listeners
+		searchInput.addEventListener('input', () => {
+			currentPage = 1;
+			filterAndPaginate();
+		});
+
+		btnPrev.addEventListener('click', () => {
+			if (currentPage > 1) {
+				currentPage--;
+				filterAndPaginate();
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			}
+		});
+
+		btnNext.addEventListener('click', () => {
+			const totalPages = Math.ceil(filteredCards.length / itemsPerPage);
+			if (currentPage < totalPages) {
+				currentPage++;
+				filterAndPaginate();
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			}
+		});
+
+		// Parse initial search query from URL ?q=...
+		const urlParams = new URLSearchParams(window.location.search);
+		const initialQuery = urlParams.get('q');
+		if (initialQuery) {
+			searchInput.value = initialQuery;
+			// Focus input and move cursor to end of text
+			searchInput.focus();
+			searchInput.setSelectionRange(initialQuery.length, initialQuery.length);
+		}
+
+		// Initial display run
+		filterAndPaginate();
+	});
+</script>
+
+<style>
+	.reviews-library {
+		max-width: 1200px;
+		margin: 0 auto;
+		padding: 1.5rem 1rem;
+	}
+
+	.library-header {
+		text-align: center;
+		margin-bottom: 2.5rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.library-header .sub {
+		color: var(--ar-accent);
+		font-weight: 800;
+		text-transform: uppercase;
+		font-size: 0.82rem;
+		letter-spacing: 0.05em;
+	}
+
+	.library-header h1 {
+		margin: 0.5rem 0 0.25rem;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		line-height: 1.15;
+		font-weight: 700;
+	}
+
+	.library-header .lead {
+		font-size: 1.1rem;
+		color: var(--ar-muted);
+		max-width: 600px;
+		margin: 0 0 1.8rem;
+		line-height: 1.45;
+	}
+
+	.search-page-bar {
+		width: 100%;
+		max-width: 32rem;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.55rem;
+	}
+
+	.input-wrapper {
+		position: relative;
+		width: 100%;
+	}
+
+	#page-search-input {
+		width: 100%;
+		border: 1px solid var(--ar-border);
+		border-radius: 999px;
+		background: var(--ar-page);
+		color: var(--ar-text);
+		padding: 0.65rem 1.25rem 0.65rem 2.6rem;
+		font-size: 1rem;
+		outline: 0;
+		transition: border-color 150ms ease, box-shadow 150ms ease;
+	}
+
+	#page-search-input:focus {
+		border-color: var(--ar-accent);
+		box-shadow: 0 0 0 3px color-mix(in srgb, var(--ar-accent) 15%, transparent);
+	}
+
+	.search-icon {
+		position: absolute;
+		left: 1rem;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 1.15rem;
+		height: 1.15rem;
+		color: var(--ar-muted);
+		pointer-events: none;
+	}
+
+	.search-count {
+		font-size: 0.88rem;
+		color: var(--ar-muted);
+		font-weight: 500;
+	}
+
+	.review-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 1rem;
+		margin-bottom: 3rem;
+	}
+
+	.review-card {
+		border: 1px solid var(--ar-border);
+		background: var(--ar-page);
+	}
+
+	.review-image {
+		display: block;
+		aspect-ratio: 4 / 3;
+		overflow: hidden;
+		background: #ffffff;
+		border-bottom: 1px solid var(--ar-border);
+	}
+
+	.review-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.review-card-copy {
+		padding: 0.85rem;
+	}
+
+	.category-tag {
+		color: var(--ar-accent);
+		font-size: 0.72rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+
+	.review-card-copy h3 {
+		margin: 0.2rem 0;
+		font-family: var(--ar-font-serif);
+		font-size: 1.15rem;
+		line-height: 1.18;
+	}
+
+	.review-card-copy h3 a {
+		color: var(--ar-link);
+		text-decoration: none;
+	}
+
+	.review-card-copy time,
+	.review-card-copy p,
+	.review-card-copy strong {
+		display: block;
+		font-size: 0.88rem;
+	}
+
+	.review-card-copy time {
+		color: var(--ar-muted);
+	}
+
+	.review-card-copy p {
+		margin: 0.45rem 0;
+		color: var(--ar-muted);
+		line-height: 1.38;
+	}
+
+	.review-card-copy strong {
+		margin-bottom: 0.35rem;
+		color: var(--ar-text);
+	}
+
+	.read-link {
+		color: var(--ar-link);
+		text-decoration: none;
+		font-size: 0.88rem;
+	}
+
+	.empty-search-state {
+		text-align: center;
+		padding: 4rem 1rem;
+		border: 1px solid var(--ar-border);
+		background: var(--ar-soft);
+		border-radius: 8px;
+		margin-bottom: 3rem;
+	}
+
+	.empty-search-state h2 {
+		margin: 0 0 0.5rem;
+		font-family: var(--ar-font-serif);
+		font-size: 1.55rem;
+	}
+
+	.empty-search-state p {
+		color: var(--ar-muted);
+		margin: 0;
+	}
+
+	.pagination-controls {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 1.25rem;
+		margin-top: 1.5rem;
+		border-top: 1px solid var(--ar-border);
+		padding-top: 1.5rem;
+	}
+
+	.btn-pagination {
+		background: var(--ar-page);
+		border: 1px solid var(--ar-border);
+		border-radius: 6px;
+		color: var(--ar-text);
+		font-weight: 600;
+		padding: 0.45rem 1rem;
+		cursor: pointer;
+		font-size: 0.9rem;
+		transition: background 150ms ease, border-color 150ms ease;
+	}
+
+	.btn-pagination:hover:not(:disabled) {
+		background: var(--ar-soft);
+		border-color: var(--ar-accent);
+	}
+
+	.btn-pagination:disabled {
+		opacity: 0.45;
+		cursor: not-allowed;
+	}
+
+	#page-indicator {
+		font-size: 0.92rem;
+		color: var(--ar-muted);
+		font-weight: 600;
+	}
+
+	@media (max-width: 920px) {
+		.review-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 560px) {
+		.review-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

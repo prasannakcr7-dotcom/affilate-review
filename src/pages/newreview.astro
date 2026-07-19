@@ -1,0 +1,310 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { reviewCategories } from '../data/reviews';
+---
+
+<BaseLayout title="Queue New Review | Affiliate Review India" description="Add a new product review draft to the queue.">
+	<section class="admin-form-container">
+		<header class="admin-header">
+			<h1>Queue New Review</h1>
+			<p>Pasted details will be saved locally as JSON files. You can then ask the AI assistant to read them and generate the final reviews.</p>
+		</header>
+
+		<form id="new-review-form" class="admin-form">
+			<div class="form-group">
+				<label for="title">Product Title</label>
+				<input type="text" id="title" name="title" required placeholder="e.g. Sony MDR-EX155AP" />
+				<small>The name of the product as you want it to appear in the review header.</small>
+			</div>
+
+			<div class="form-row">
+				<div class="form-group">
+					<label for="category">Category</label>
+					<select id="category" name="category" required>
+						<option value="">Select Category</option>
+						{reviewCategories.map((cat) => (
+							<option value={cat}>{cat}</option>
+						))}
+					</select>
+				</div>
+
+				<div class="form-group">
+					<label for="url">Amazon Product URL</label>
+					<input type="url" id="url" name="url" required placeholder="https://www.amazon.in/dp/..." />
+				</div>
+			</div>
+
+			<div class="form-group">
+				<label for="imageUrl">Amazon Product Image URL (m.media-amazon.com)</label>
+				<input type="url" id="imageUrl" name="imageUrl" placeholder="https://m.media-amazon.com/images/I/..." />
+				<small>The backend will download this image and save it directly to your public folder.</small>
+			</div>
+
+			<div class="form-group">
+				<label for="rawText">Raw Amazon Specs & Reviews Text</label>
+				<textarea id="rawText" name="rawText" required placeholder="Copy and paste the entire Amazon description, specifications table, and customer feedback here..." rows="12"></textarea>
+				<small>Select all text on the Amazon page (or focus on specs and reviews) and paste it here directly.</small>
+			</div>
+
+			<button type="submit" id="submit-btn" class="submit-button">Save Product to Queue</button>
+
+			<div id="status-message" class="status-msg hidden"></div>
+		</form>
+	</section>
+</BaseLayout>
+
+<script is:inline>
+	const form = document.getElementById('new-review-form');
+	const submitBtn = document.getElementById('submit-btn');
+	const statusMsg = document.getElementById('status-message');
+
+	form?.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		
+		submitBtn.disabled = true;
+		submitBtn.innerText = 'Downloading image & saving...';
+		statusMsg.className = 'status-msg hidden';
+		statusMsg.innerText = '';
+
+		const formData = new FormData(form);
+		const payload = {
+			title: formData.get('title'),
+			category: formData.get('category'),
+			url: formData.get('url'),
+			imageUrl: formData.get('imageUrl'),
+			rawText: formData.get('rawText'),
+		};
+
+		try {
+			const response = await fetch('/api/save-pending', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(payload),
+			});
+
+			const result = await response.json();
+			if (!response.ok) {
+				throw new Error(result.error || 'Failed to save review queue item.');
+			}
+
+			statusMsg.className = 'status-msg success';
+			statusMsg.innerHTML = `
+				<strong>Success!</strong> Product saved as <code>src/data/pending-reviews/${result.slug}.json</code>.
+				<div class="prompt-box">
+					<p><strong>Use this prompt for the AI assistant:</strong></p>
+					<textarea id="ai-prompt-text" readonly rows="8" class="prompt-textarea">Write the review for the product in \`src/data/pending-reviews/${result.slug}.json\`.
+You MUST read the style guide in \`KB/style-guide-human-writing.md\` and follow the prompt template in \`KB/ai-prompt-template.md\`.
+Please perform the following steps:
+1. Analyze the product title and determine a short, meaningful, URL-friendly slug (max 4-5 words, e.g., 'nova-milk-frother' or 'sony-wh-ch520-headphones').
+2. Write the review from scratch and save it to \`src/content/reviews/[meaningful-slug].md\`.
+3. Rename the product image from \`public/images/products/${result.slug}.jpg\` to \`public/images/products/[meaningful-slug].jpg\`, and update the frontmatter image paths to match.
+4. Delete the original pending JSON file at \`src/data/pending-reviews/${result.slug}.json\`.</textarea>
+					<button type="button" id="copy-prompt-btn" class="copy-button">Copy Prompt</button>
+				</div>
+			`;
+			
+			const copyBtn = document.getElementById('copy-prompt-btn');
+			copyBtn?.addEventListener('click', () => {
+				const promptTextarea = document.getElementById('ai-prompt-text');
+				if (promptTextarea) {
+					promptTextarea.select();
+					navigator.clipboard.writeText(promptTextarea.value);
+					copyBtn.innerText = 'Copied!';
+					setTimeout(() => {
+						copyBtn.innerText = 'Copy Prompt';
+					}, 2000);
+				}
+			});
+			form.reset();
+		} catch (error) {
+			statusMsg.className = 'status-msg error';
+			statusMsg.innerText = error.message || 'An error occurred while saving.';
+		} finally {
+			submitBtn.disabled = false;
+			submitBtn.innerText = 'Save Product to Queue';
+		}
+	});
+</script>
+
+<style>
+	.admin-form-container {
+		max-width: 800px;
+		margin: 1.5rem auto 3rem;
+		background: var(--ar-page);
+		border: 1px solid var(--ar-border);
+		border-radius: 0.75rem;
+		padding: 2.2rem 2rem;
+		box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+	}
+
+	.admin-header {
+		margin-bottom: 2rem;
+		border-bottom: 3px solid var(--ar-rule);
+		padding-bottom: 1rem;
+	}
+
+	.admin-header h1 {
+		margin: 0 0 0.5rem;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(2rem, 5vw, 2.75rem);
+		color: var(--ar-text);
+	}
+
+	.admin-header p {
+		margin: 0;
+		color: var(--ar-muted);
+		line-height: 1.45;
+	}
+
+	.admin-form {
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	.form-group {
+		display: grid;
+		gap: 0.45rem;
+	}
+
+	.form-row {
+		display: grid;
+		grid-template-columns: 1fr 2fr;
+		gap: 1rem;
+	}
+
+	@media (max-width: 600px) {
+		.form-row {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	label {
+		font-weight: 700;
+		font-size: 0.95rem;
+		color: var(--ar-text);
+	}
+
+	input[type="text"],
+	input[type="url"],
+	select,
+	textarea {
+		width: 100%;
+		border: 1px solid var(--ar-border);
+		border-radius: 0.35rem;
+		background: var(--ar-bg);
+		color: var(--ar-text);
+		padding: 0.65rem 0.85rem;
+		font: inherit;
+		box-sizing: border-box;
+		outline: none;
+		transition: border-color 150ms ease;
+	}
+
+	input:focus,
+	select:focus,
+	textarea:focus {
+		border-color: var(--ar-score);
+	}
+
+	textarea {
+		resize: vertical;
+	}
+
+	small {
+		color: var(--ar-muted);
+		font-size: 0.8rem;
+	}
+
+	.submit-button {
+		justify-self: start;
+		border: none;
+		border-radius: 0.35rem;
+		background: var(--ar-score);
+		color: #ffffff;
+		font-size: 1.05rem;
+		font-weight: 700;
+		padding: 0.75rem 1.75rem;
+		cursor: pointer;
+		transition: background 150ms ease;
+	}
+
+	.submit-button:hover {
+		background: #0b6d68;
+	}
+
+	.submit-button:disabled {
+		background: var(--ar-border);
+		color: var(--ar-muted);
+		cursor: not-allowed;
+	}
+
+	.status-msg {
+		border-radius: 0.35rem;
+		padding: 1rem 1.2rem;
+		font-size: 0.95rem;
+		line-height: 1.5;
+	}
+
+	.status-msg.hidden {
+		display: none;
+	}
+
+	.status-msg.success {
+		background: color-mix(in srgb, var(--ar-score) 10%, var(--ar-page));
+		border: 1px solid var(--ar-score);
+		color: #0b6d68;
+	}
+
+	.status-msg.error {
+		background: #fff5f5;
+		border: 1px solid #feb2b2;
+		color: #c53030;
+	}
+
+	code {
+		font-family: monospace;
+		background: rgba(0,0,0,0.05);
+		padding: 0.15rem 0.3rem;
+		border-radius: 3px;
+	}
+
+	.prompt-box {
+		margin-top: 1rem;
+		border-top: 1px solid var(--ar-border);
+		padding-top: 1rem;
+		display: grid;
+		gap: 0.5rem;
+	}
+
+	.prompt-textarea {
+		width: 100%;
+		font-family: monospace;
+		font-size: 0.9rem;
+		background: var(--ar-bg);
+		color: var(--ar-text);
+		border: 1px solid var(--ar-border);
+		border-radius: 0.35rem;
+		padding: 0.5rem;
+		resize: none;
+	}
+
+	.copy-button {
+		justify-self: start;
+		border: 1px solid var(--ar-score);
+		border-radius: 0.35rem;
+		background: transparent;
+		color: var(--ar-score);
+		font-size: 0.9rem;
+		font-weight: 700;
+		padding: 0.4rem 1rem;
+		cursor: pointer;
+		transition: background 150ms ease, color 150ms ease;
+	}
+
+	.copy-button:hover {
+		background: var(--ar-score);
+		color: #ffffff;
+	}
+</style>

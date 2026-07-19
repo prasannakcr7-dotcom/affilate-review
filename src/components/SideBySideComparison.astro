@@ -1,0 +1,538 @@
+---
+import type { ReviewProduct } from '../data/reviews';
+
+interface Props {
+	primaryProductId: string;
+	products: ReviewProduct[];
+}
+
+const { primaryProductId, products } = Astro.props;
+const primaryProduct = products.find((product) => product.id === primaryProductId) ?? products[0];
+const metricRows = primaryProduct?.metrics ?? [];
+const serializedProducts = JSON.stringify(products);
+---
+
+<section class="comparison-section" aria-labelledby="comparison-title" data-comparison data-primary-id={primaryProduct.id}>
+	<div class="comparison-heading">
+		<div>
+			<p class="section-tag">Top picks</p>
+			<h2 id="comparison-title" class="comparison-title">Side-by-Side Comparison</h2>
+		</div>
+		<span class="comparison-subtitle">Start with our main pick, then add competing products from the dropdown.</span>
+	</div>
+
+	<div class="compare-controls">
+		<div class="custom-dropdown" data-dropdown>
+			<button type="button" class="dropdown-trigger" data-dropdown-trigger aria-expanded="false" aria-haspopup="listbox">
+				<span>Pick a Product to Compare</span>
+				<svg class="dropdown-arrow" viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+					<path d="M7 10l5 5 5-5H7z" fill="currentColor"></path>
+				</svg>
+			</button>
+			<ul class="dropdown-menu" role="listbox" data-dropdown-menu>
+				{products.filter((product) => product.id !== primaryProduct.id).map((product) => (
+					<li role="option" data-value={product.id} class="dropdown-item">
+						{product.name}
+					</li>
+				))}
+			</ul>
+		</div>
+		<button type="button" class="reset-button" data-reset-comparison>Reset</button>
+	</div>
+
+	<script type="application/json" data-products set:html={serializedProducts}></script>
+
+	<div class="table-scroll" tabindex="0" aria-label="Side-by-side product comparison">
+		<table>
+			<thead data-table-head></thead>
+			<tbody data-table-body></tbody>
+		</table>
+	</div>
+</section>
+
+<script is:inline>
+	const sections = document.querySelectorAll('[data-comparison]');
+
+	const escapeHtml = (value) =>
+		String(value ?? '')
+			.replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;')
+			.replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;')
+			.replaceAll("'", '&#039;');
+
+	const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+	sections.forEach((section) => {
+		const dataNode = section.querySelector('[data-products]');
+		const dropdown = section.querySelector('[data-dropdown]');
+		const trigger = section.querySelector('[data-dropdown-trigger]');
+		const menu = section.querySelector('[data-dropdown-menu]');
+		const reset = section.querySelector('[data-reset-comparison]');
+		const head = section.querySelector('[data-table-head]');
+		const body = section.querySelector('[data-table-body]');
+		const products = JSON.parse(dataNode?.textContent || '[]');
+		const primaryId = section.getAttribute('data-primary-id');
+		const primary = products.find((product) => product.id === primaryId) || products[0];
+		let selectedIds = primary ? [primary.id] : [];
+
+		const getSelectedProducts = () =>
+			selectedIds.map((id) => products.find((product) => product.id === id)).filter(Boolean);
+
+		const renderScore = (score) => {
+			const val = Number(score) || 0;
+			const width = clamp(val, 0, 100);
+			const color = val > 70 ? '#2e7d32' : val >= 50 ? '#f2a30f' : '#d32f2f';
+			return `<div class="score-bar"><span style="width:${width}%; background:${color}">${escapeHtml(score)}</span></div>`;
+		};
+
+		const renderMetric = (score) => {
+			const val = Number(score) || 0;
+			const width = clamp(val * 10, 0, 100);
+			const color = val > 7.0 ? '#2e7d32' : val >= 5.0 ? '#f2a30f' : '#d32f2f';
+			return `<div class="score-bar"><span style="width:${width}%; background:${color}">${escapeHtml(val.toFixed(1))}</span></div>`;
+		};
+
+		const renderList = (items) => `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+
+		const row = (label, cells, extraClass = '') =>
+			`<tr class="${extraClass}"><th scope="row">${label}</th>${cells.map((cell) => `<td>${cell}</td>`).join('')}</tr>`;
+
+		const render = () => {
+			const selectedProducts = getSelectedProducts();
+			head.innerHTML = `
+				<tr>
+					<th scope="col">Criteria</th>
+					${selectedProducts
+						.map(
+							(product) => `
+								<th scope="col">
+									<a href="${escapeHtml(product.slug)}" class="product-thumb">
+										<img src="${escapeHtml(product.image)}" alt="${escapeHtml(product.imageAlt)}" loading="lazy" width="240" height="150" />
+									</a>
+									<a href="${escapeHtml(product.slug)}" class="product-name">${escapeHtml(product.name)}</a>
+								</th>
+							`,
+						)
+						.join('')}
+				</tr>
+			`;
+
+			const metricRows = selectedProducts[0]?.metrics ?? [];
+			body.innerHTML = [
+				row(
+					'Awards',
+					selectedProducts.map(
+						(product) =>
+							`<span class="award">${escapeHtml(product.awardBadge || 'Recommended')}</span><em>${escapeHtml(product.awardNote || '')}</em>`,
+					),
+				),
+				row(
+					'Price',
+					selectedProducts.map(
+						(product) =>
+							`<strong class="price">${escapeHtml(product.price)}</strong><a href="${escapeHtml(product.buyUrl)}" rel="sponsored nofollow noopener" target="_blank">Check Amazon</a>`,
+					),
+				),
+				row('Overall Score', selectedProducts.map((product) => renderScore(product.overallScore))),
+				row(
+					'Star Rating',
+					selectedProducts.map((product) => `<span class="stars">${'★'.repeat(Math.round(product.starRating))}</span>`),
+				),
+				row('Bottom Line', selectedProducts.map((product) => escapeHtml(product.bottomLine))),
+				row('Pros', selectedProducts.map((product) => renderList(product.pros))),
+				row('Cons', selectedProducts.map((product) => renderList(product.cons))),
+				row('Specs', selectedProducts.map((product) => renderList(Object.entries(product.specs).map(([key, value]) => `${key}: ${value}`)))),
+				row('Rating Categories', selectedProducts.map((product) => `<strong>${escapeHtml(product.name)}</strong>`), 'rating-head'),
+				...metricRows.map((metric, index) =>
+					row(
+						`${escapeHtml(metric.label)} (${escapeHtml(metric.weight)})`,
+						selectedProducts.map((product) => renderMetric(product.metrics[index]?.score ?? 0)),
+					),
+				),
+			].join('');
+
+			// Update custom dropdown items display based on selection
+			if (menu) {
+				Array.from(menu.children).forEach((item) => {
+					const val = item.getAttribute('data-value');
+					if (selectedIds.includes(val)) {
+						item.style.display = 'none';
+					} else {
+						item.style.display = 'block';
+					}
+				});
+			}
+		};
+
+		// Dropdown toggle
+		trigger?.addEventListener('click', (e) => {
+			e.stopPropagation();
+			const isOpen = dropdown.classList.contains('active');
+			if (isOpen) {
+				dropdown.classList.remove('active');
+				trigger.setAttribute('aria-expanded', 'false');
+			} else {
+				dropdown.classList.add('active');
+				trigger.setAttribute('aria-expanded', 'true');
+			}
+		});
+
+		// Option selection
+		menu?.addEventListener('click', (e) => {
+			const item = e.target.closest('[data-value]');
+			if (item) {
+				const val = item.getAttribute('data-value');
+				if (val && !selectedIds.includes(val)) {
+					selectedIds = [...selectedIds, val];
+					render();
+				}
+				dropdown.classList.remove('active');
+				trigger.setAttribute('aria-expanded', 'false');
+			}
+		});
+
+		// Close dropdown when clicking outside
+		document.addEventListener('click', () => {
+			dropdown?.classList.remove('active');
+			trigger?.setAttribute('aria-expanded', 'false');
+		});
+
+		reset?.addEventListener('click', () => {
+			selectedIds = primary ? [primary.id] : [];
+			render();
+		});
+
+		render();
+	});
+</script>
+
+<style is:global>
+	/* Use flat, highly compatible CSS selectors inside global style */
+	.comparison-section {
+		margin: 2.5rem 0;
+	}
+
+	.comparison-section .comparison-heading {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		margin-bottom: 1.25rem;
+	}
+
+	.comparison-section .section-tag {
+		margin: 0 0 0.25rem;
+		color: var(--ar-accent);
+		font-size: 0.78rem;
+		font-weight: 900;
+		text-transform: uppercase;
+	}
+
+	.comparison-section .comparison-title {
+		margin: 0;
+		font-family: var(--ar-font-serif);
+		font-size: 24px;
+		line-height: 1.15;
+	}
+
+	.comparison-section .comparison-subtitle {
+		color: var(--ar-muted);
+		font-size: 1.05rem;
+		line-height: 1.45;
+	}
+
+	.comparison-section .compare-controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		align-items: center;
+		margin-bottom: 1.25rem;
+	}
+
+	/* TechGearLab Custom Dropdown Styles */
+	.comparison-section .custom-dropdown {
+		position: relative;
+		display: inline-block;
+	}
+
+	.comparison-section .dropdown-trigger {
+		display: inline-flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.65rem;
+		border: none;
+		border-radius: 0.35rem;
+		background: #4a5568;
+		color: #ffffff;
+		font-size: 0.95rem;
+		font-weight: 700;
+		padding: 0.65rem 1.15rem;
+		cursor: pointer;
+		transition: background 150ms ease;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+	}
+
+	.comparison-section .dropdown-trigger:hover {
+		background: #2d3748;
+	}
+
+	.comparison-section .dropdown-arrow {
+		transition: transform 150ms ease;
+	}
+
+	.comparison-section .custom-dropdown.active .dropdown-arrow {
+		transform: rotate(180deg);
+	}
+
+	.comparison-section .dropdown-menu {
+		display: none;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 120;
+		min-width: 280px;
+		background: #ffffff;
+		border: 1px solid #cbd5e0;
+		border-radius: 0.35rem;
+		box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+		padding: 0.4rem 0;
+		margin: 0.35rem 0 0 0;
+		list-style: none;
+		max-height: 280px;
+		overflow-y: auto;
+	}
+
+	.comparison-section .custom-dropdown.active .dropdown-menu {
+		display: block;
+	}
+
+	.comparison-section .dropdown-item {
+		padding: 0.6rem 1.15rem;
+		color: #2d3748;
+		font-size: 0.93rem;
+		font-weight: 500;
+		cursor: pointer;
+		text-align: left;
+		transition: background 120ms ease, color 120ms ease;
+	}
+
+	.comparison-section .dropdown-item:hover {
+		background: #edf2f7;
+		color: #1a202c;
+	}
+
+	.comparison-section .reset-button {
+		border: 1px solid #cbd5e0;
+		border-radius: 0.35rem;
+		background: var(--ar-page);
+		color: var(--ar-muted);
+		cursor: pointer;
+		font-size: 0.93rem;
+		font-weight: 700;
+		padding: 0.6rem 1rem;
+		transition: background 150ms ease, color 150ms ease;
+	}
+
+	.comparison-section .reset-button:hover {
+		background: #edf2f7;
+		color: var(--ar-text);
+	}
+
+	/* TechGearLab Table Styles */
+	.comparison-section .table-scroll {
+		overflow-x: auto;
+		border: 1px solid var(--ar-border);
+		border-radius: 0.5rem;
+		background: var(--ar-page);
+		box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+	}
+
+	.comparison-section table {
+		width: max-content;
+		border-collapse: collapse;
+		font-size: 0.94rem;
+	}
+
+	.comparison-section th,
+	.comparison-section td {
+		border-right: 1px solid var(--ar-border);
+		border-bottom: 1px solid var(--ar-border);
+		padding: 0.85rem 1rem;
+		text-align: left;
+		vertical-align: top;
+	}
+
+	.comparison-section th {
+		background: var(--ar-soft);
+		color: var(--ar-text);
+		font-weight: 800;
+		text-transform: capitalize;
+		vertical-align: middle;
+	}
+
+	.comparison-section tbody th,
+	.comparison-section thead th:first-child {
+		width: 12rem;
+		min-width: 12rem;
+		max-width: 12rem;
+	}
+
+	.comparison-section td,
+	.comparison-section thead th:not(:first-child) {
+		width: 16rem;
+		min-width: 16rem;
+		max-width: 16rem;
+		background: var(--ar-page);
+	}
+
+	.comparison-section thead th {
+		background: var(--ar-page);
+		text-align: center;
+		vertical-align: bottom;
+		padding: 1.25rem 1rem;
+	}
+
+	.comparison-section thead th:first-child {
+		background: var(--ar-soft);
+		text-align: left;
+		vertical-align: middle;
+		padding: 0.95rem 1.1rem;
+		font-size: 0.88rem;
+		text-transform: capitalize;
+	}
+
+	.comparison-section .product-thumb {
+		display: block;
+		margin-bottom: 0.75rem;
+		background: #ffffff;
+		text-align: center;
+	}
+
+	.comparison-section .product-thumb img {
+		display: block;
+		margin: 0 auto;
+		max-width: 100%;
+		max-height: 120px;
+		object-fit: contain;
+	}
+
+	.comparison-section .product-name {
+		display: block;
+		color: var(--ar-link);
+		font-family: var(--ar-font-serif);
+		font-size: 1.15rem;
+		font-weight: 700;
+		line-height: 1.25;
+		text-decoration: none;
+		text-align: center;
+	}
+
+	.comparison-section .product-name:hover {
+		text-decoration: underline;
+	}
+
+	.comparison-section .award {
+		display: inline-flex;
+		margin-bottom: 0.35rem;
+		border-radius: 4px;
+		background: #0077c2;
+		color: #ffffff;
+		font-size: 0.75rem;
+		font-weight: 800;
+		padding: 0.25rem 0.5rem;
+		text-transform: uppercase;
+	}
+
+	.comparison-section em {
+		display: block;
+		color: var(--ar-muted);
+		font-style: normal;
+		font-size: 0.88rem;
+		margin-top: 0.2rem;
+	}
+
+	.comparison-section .price {
+		display: block;
+		margin-bottom: 0.25rem;
+		font-size: 1.25rem;
+		font-weight: 800;
+		color: var(--ar-text);
+	}
+
+	.comparison-section td a {
+		color: var(--ar-link);
+		text-decoration: none;
+		font-size: 0.9rem;
+		font-weight: 500;
+	}
+
+	.comparison-section td a:hover {
+		text-decoration: underline;
+	}
+
+	/* TechGearLab Rounded Score Bars */
+	.comparison-section .score-bar {
+		width: 100%;
+		max-width: 14rem;
+		height: 1.45rem;
+		border-radius: 999px;
+		background: #e2e8f0;
+		overflow: hidden;
+		display: inline-block;
+		vertical-align: middle;
+	}
+
+	.comparison-section .score-bar span {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: #ffffff;
+		font-size: 0.85rem;
+		font-weight: 800;
+		border-radius: 999px;
+	}
+
+	.comparison-section .score-bar.green span {
+		background: #2e7d32; /* TechGearLab Green */
+	}
+
+	.comparison-section .score-bar.yellow span {
+		background: #f2a30f; /* Orange/Yellow */
+	}
+
+	.comparison-section .score-bar.red span {
+		background: #d32f2f; /* Red */
+	}
+
+	.comparison-section .stars {
+		color: #ffb300;
+		font-size: 1.25rem;
+	}
+
+	.comparison-section td ul {
+		display: grid;
+		gap: 0.3rem;
+		margin: 0;
+		padding-left: 1.2rem;
+		color: var(--ar-muted);
+	}
+
+	.comparison-section .rating-head th,
+	.comparison-section .rating-head td {
+		background: var(--ar-card);
+		color: var(--ar-text);
+		font-weight: 700;
+	}
+
+	@media (max-width: 820px) {
+		.comparison-section .comparison-heading {
+			grid-template-columns: 1fr;
+			gap: 0.4rem;
+		}
+
+		.comparison-section .comparison-title {
+			font-size: clamp(2rem, 10vw, 3rem);
+		}
+	}
+</style>

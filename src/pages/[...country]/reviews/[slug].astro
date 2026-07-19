@@ -1,0 +1,562 @@
+---
+import { getCollection, render } from 'astro:content';
+import SideBySideComparison from '../../../components/SideBySideComparison.astro';
+import { getLocalizedProduct, getLocalizedPath, toSlug } from '../../../data/reviews';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+	const reviews = await getCollection('reviews');
+	const paths = [];
+
+	for (const entry of reviews) {
+		const markets = entry.data.markets || ['us', 'in'];
+		if (markets.includes('in')) {
+			paths.push({
+				params: { country: 'in', slug: entry.id },
+				props: { entry, country: 'in' },
+			});
+		}
+	}
+	return paths;
+}
+
+const { entry, country } = Astro.props;
+const { Content, headings } = await render(entry);
+const review = entry.data;
+
+// Resolve and filter products for this country
+const resolvedProducts = review.products
+	.filter((product) => !product.markets || product.markets.includes(country))
+	.map((product) => getLocalizedProduct(product, country));
+
+const primaryProduct =
+	resolvedProducts.find((product) => product.id === review.primaryProductId) ?? resolvedProducts[0];
+
+const metricWidth = (score: number) => `${Math.max(0, Math.min(10, score)) * 10}%`;
+
+const schemaJson = {
+	'@context': 'https://schema.org',
+	'@type': 'Review',
+	headline: `${primaryProduct.name} Review`,
+	description: review.summary,
+	itemReviewed: {
+		'@type': 'Product',
+		name: primaryProduct.name,
+		brand: {
+			'@type': 'Brand',
+			name: primaryProduct.brand,
+		},
+	},
+	reviewRating: {
+		'@type': 'Rating',
+		ratingValue: (primaryProduct.overallScore / 10).toFixed(1),
+		bestRating: '10',
+		worstRating: '1',
+	},
+	author: {
+		'@type': 'Organization',
+		name: country === 'in' ? 'SecondLook India' : 'SecondLook',
+	},
+};
+
+// A helper function to create safe IDs for the table of contents
+const slugify = (text: string) =>
+	text
+		.toLowerCase()
+		.replace(/[^a-z0-9\s-]/g, '') // remove non-alphanumeric and non-space characters
+		.trim()
+		.replace(/\s+/g, '-')         // replace spaces with single dash
+		.replace(/-+/g, '-');         // collapse consecutive dashes
+---
+
+<BaseLayout
+	title={`${primaryProduct.name} Review | ${review.title}`}
+	description={review.summary}
+	image={review.heroImage}
+	schemaJson={schemaJson}
+	country={country}
+>
+	<nav class="breadcrumbs" aria-label="Breadcrumb">
+		<a href={getLocalizedPath(`/category/${toSlug(review.category)}`, country)}>{review.category}</a>
+		<span>/</span>
+		<a href={getLocalizedPath(`/reviews/${entry.id}`, country)}>{primaryProduct.name} Review</a>
+	</nav>
+
+	<article class="review-page">
+		<header class="review-header">
+			<h1>{primaryProduct.name} Review</h1>
+			<p class="subtitle">{primaryProduct.bottomLine}</p>
+		</header>
+
+		<div class="showcase-container">
+			<figure class="showcase-image-wrapper">
+				<img src={review.heroImage} alt={primaryProduct.imageAlt} width="560" height="400" />
+			</figure>
+
+			<section class="score-summary" id="scores">
+				<div class="meta-line">
+					<p><strong>Price:</strong> {primaryProduct.price} List <span class="stars">★★★★</span></p>
+					<p><strong>Manufacturer:</strong> <a href={getLocalizedPath(`/brands/${primaryProduct.brand.toLowerCase()}`, country)}>{primaryProduct.brand}</a></p>
+				</div>
+
+				<div class="author-row">
+					<img src="/blog-placeholder-about.jpg" alt="" width="56" height="56" />
+					<p>By <a href={getLocalizedPath("/about", country)}>{country === 'in' ? 'SecondLook India' : 'SecondLook'}</a> · Review Editor · {new Date(review.publishDate).toLocaleDateString(country === 'in' ? 'en-IN' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+				</div>
+
+				<div class="score-card">
+					<div class="overall-score" style={`background: ${primaryProduct.overallScore > 70 ? '#2e7d32' : primaryProduct.overallScore >= 50 ? '#f2a30f' : '#d32f2f'}`}>
+						<strong>{primaryProduct.overallScore}</strong>
+						<span>Overall Score</span>
+						<small>Ranked #1 of {resolvedProducts.length}</small>
+					</div>
+					<div class="score-bars">
+						{
+							primaryProduct.metrics.map((row) => (
+								<div class="score-row">
+									<div>
+										<span>{row.label} - {row.weight}</span>
+										<strong>{row.score.toFixed(1)}</strong>
+									</div>
+									<div class="metric-track" aria-label={`${row.label} scored ${row.score} out of 10`}>
+										<span style={`width: ${metricWidth(row.score)}; background: ${row.score > 7.0 ? '#2e7d32' : row.score >= 5.0 ? '#f2a30f' : '#d32f2f'}`}></span>
+									</div>
+								</div>
+							))
+						}
+					</div>
+				</div>
+			</section>
+		</div>
+
+		<div class="review-grid">
+			<div class="main-column">
+				<section class="buy-box">
+					{primaryProduct.awardBadge && <span class="award">{primaryProduct.awardBadge}</span>}
+					{primaryProduct.awardNote && <em>{primaryProduct.awardNote}</em>}
+					<p>List Price: {primaryProduct.price}</p>
+					<a href={primaryProduct.buyUrl} rel="sponsored nofollow noopener" target="_blank">
+						Check price at Amazon <small>(availability changes)</small>
+					</a>
+				</section>
+
+				<div class="markdown-content">
+					<Content />
+				</div>
+
+				<div class="pros-cons-container">
+					<div class="pros-cons">
+						<div>
+							<h3>Reasons to Buy</h3>
+							<ul class="positive">
+								{primaryProduct.pros.map((item) => <li><span aria-hidden="true">+</span>{item}</li>)}
+							</ul>
+						</div>
+						<div>
+							<h3>Reasons to Avoid</h3>
+							<ul class="negative">
+								{primaryProduct.cons.map((item) => <li><span aria-hidden="true">-</span>{item}</li>)}
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<aside class="toc">
+				<h2>Table of Contents</h2>
+				<ul>
+					{headings.filter((h) => h.depth === 2).map((item) => <li><a href={`#${item.slug}`}>{item.text}</a></li>)}
+				</ul>
+			</aside>
+		</div>
+
+		<SideBySideComparison primaryProductId={review.primaryProductId} products={resolvedProducts} />
+	</article>
+</BaseLayout>
+
+<style>
+	.breadcrumbs {
+		display: flex;
+		gap: 0.45rem;
+		margin-bottom: 1.6rem;
+		color: var(--ar-muted);
+		font-size: 0.9rem;
+	}
+
+	.breadcrumbs a {
+		color: var(--ar-link);
+		text-decoration: none;
+	}
+
+	.breadcrumbs a:hover {
+		text-decoration: underline;
+	}
+
+	.review-header h1 {
+		margin: 0;
+		font-family: var(--ar-font-serif);
+		font-size: 36px;
+		line-height: 1.15;
+	}
+
+	.subtitle {
+		margin: 0.8rem 0 1.45rem;
+		font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+		line-height: 1.32;
+	}
+
+	.showcase-container {
+		display: grid;
+		grid-template-columns: 460px 1fr;
+		gap: 2rem;
+		align-items: stretch;
+		margin-bottom: 2.5rem;
+		border-bottom: 1px solid var(--ar-border);
+		padding-bottom: 2rem;
+	}
+
+	.score-summary {
+		align-self: center;
+	}
+
+	.showcase-image-wrapper {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: #ffffff;
+		border: 1px solid var(--ar-border);
+		border-radius: 8px;
+		padding: 1rem;
+		min-height: 380px;
+	}
+
+	.showcase-image-wrapper img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.review-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 21rem;
+		gap: 2.1rem;
+		align-items: start;
+	}
+
+	.main-column {
+		min-width: 0;
+	}
+
+	.meta-line {
+		border-top: 3px solid var(--ar-rule);
+		border-bottom: 3px solid var(--ar-rule);
+		padding: 0.45rem 0;
+	}
+
+	.meta-line p {
+		margin: 0.35rem 0;
+		font-size: 1.08rem;
+	}
+
+	.stars {
+		color: #f2a30f;
+	}
+
+	.author-row {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		border-bottom: 1px dotted var(--ar-rule);
+		padding: 0.7rem 0 0.9rem;
+	}
+
+	.author-row img {
+		width: 3.2rem;
+		height: 3.2rem;
+		border-radius: 50%;
+		object-fit: cover;
+	}
+
+	.author-row p {
+		margin: 0;
+	}
+
+	.score-card {
+		display: grid;
+		grid-template-columns: 7rem 1fr;
+		gap: 1.4rem;
+		margin: 1.2rem 0 1.5rem;
+	}
+
+	.overall-score {
+		display: grid;
+		justify-items: center;
+		align-content: start;
+		gap: 0.45rem;
+		background: var(--ar-score);
+		color: #ffffff;
+		padding: 1.2rem 0.7rem;
+		text-align: center;
+	}
+
+	.overall-score.green {
+		background: #2e7d32;
+	}
+
+	.overall-score.yellow {
+		background: #f2a30f;
+	}
+
+	.overall-score.red {
+		background: #d32f2f;
+	}
+
+	.overall-score strong {
+		font-size: 2.7rem;
+		line-height: 1;
+	}
+
+	.overall-score span {
+		font-weight: 900;
+		text-transform: uppercase;
+	}
+
+	.overall-score small {
+		margin-top: 0.6rem;
+		font-size: 0.88rem;
+	}
+
+	.score-bars {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.score-row div {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		font-size: 0.95rem;
+	}
+
+	.metric-track {
+		width: 100%;
+		height: 0.7rem;
+		overflow: hidden;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--ar-border) 70%, var(--ar-page));
+	}
+
+	.metric-track span {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: var(--ar-score);
+	}
+
+	.metric-track span.green {
+		background: #2e7d32;
+	}
+
+	.metric-track span.yellow {
+		background: #f2a30f;
+	}
+
+	.metric-track span.red {
+		background: #d32f2f;
+	}
+
+	.buy-box {
+		display: grid;
+		justify-items: start;
+		gap: 0.4rem;
+		margin: 1.2rem 0 2rem;
+		border-bottom: 1px dotted var(--ar-rule);
+		padding-bottom: 1.4rem;
+		text-align: left;
+	}
+
+	.award {
+		display: inline-flex;
+		background: var(--ar-accent);
+		color: #ffffff;
+		font-weight: 900;
+		padding: 0.45rem 0.8rem;
+		text-transform: uppercase;
+	}
+
+	.buy-box p {
+		margin: 0.2rem 0;
+		color: var(--ar-muted);
+	}
+
+	.buy-box a {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 0.35rem;
+		border-radius: 0.35rem;
+		background: var(--ar-score-alt);
+		color: #ffffff;
+		font-size: 1.05rem;
+		padding: 0.65rem 2rem;
+		text-decoration: none;
+	}
+
+	.buy-box small {
+		font-style: italic;
+	}
+
+	.markdown-content {
+		margin-bottom: 2.5rem;
+	}
+
+	.markdown-content :global(h2) {
+		margin: 2.2rem 0 0.8rem;
+		font-family: var(--ar-font-serif);
+		font-size: 24px;
+		line-height: 1.2;
+		border-bottom: 1px dotted var(--ar-rule);
+		padding-bottom: 0.35rem;
+		scroll-margin-top: 1.5rem;
+	}
+
+	.markdown-content :global(p) {
+		max-width: 52rem;
+		margin: 0 0 1.25rem;
+		font-size: 1.06rem;
+		line-height: 1.6;
+	}
+
+	.markdown-content :global(ul),
+	.markdown-content :global(ol) {
+		margin-bottom: 1.25rem;
+		padding-left: 1.5rem;
+	}
+
+	.markdown-content :global(li) {
+		margin-bottom: 0.45rem;
+		font-size: 1.05rem;
+		line-height: 1.5;
+	}
+
+	.pros-cons-container {
+		margin-bottom: 2.5rem;
+		border-bottom: 1px dotted var(--ar-rule);
+		padding-bottom: 1.8rem;
+	}
+
+	.pros-cons {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 2rem;
+	}
+
+	.pros-cons h3 {
+		margin: 0 0 0.65rem;
+		font-size: 24px;
+		text-transform: uppercase;
+	}
+
+	.pros-cons ul {
+		display: grid;
+		gap: 0.7rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.pros-cons li {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		font-size: 1rem;
+	}
+
+	.pros-cons li span {
+		flex: 0 0 auto;
+		display: grid;
+		width: 1.35rem;
+		height: 1.35rem;
+		place-items: center;
+		border-radius: 50%;
+		color: #ffffff;
+		font-weight: 900;
+	}
+
+	.positive li span {
+		background: var(--ar-score);
+	}
+
+	.negative li span {
+		background: #f2a30f;
+	}
+
+	.toc {
+		background: var(--ar-page);
+		border: 1px solid var(--ar-border);
+		padding: 0.9rem 1rem;
+	}
+
+	.toc h2 {
+		margin: 0 0 0.45rem;
+		font-family: var(--ar-font-serif);
+		font-size: 24px;
+	}
+
+	.toc ul {
+		display: grid;
+		gap: 0.45rem;
+		margin: 0;
+		padding-left: 1.2rem;
+	}
+
+	.toc li {
+		padding-left: 0.25rem;
+	}
+
+	.toc a {
+		font-size: 1rem;
+		text-decoration: none;
+		color: var(--ar-link);
+	}
+
+	.toc a:hover {
+		text-decoration: underline;
+	}
+
+	@media (max-width: 940px) {
+		.showcase-container {
+			grid-template-columns: 1fr;
+			gap: 1.5rem;
+			margin-bottom: 2rem;
+			padding-bottom: 1.5rem;
+		}
+
+		.showcase-image-wrapper {
+			min-height: auto;
+			padding: 1rem;
+		}
+
+		.showcase-image-wrapper img {
+			max-height: 280px;
+		}
+
+		.review-grid,
+		.score-card {
+			grid-template-columns: 1fr;
+		}
+
+		.toc {
+			position: static;
+			order: -1;
+			margin-bottom: 1.5rem;
+		}
+	}
+
+	@media (max-width: 620px) {
+		.pros-cons {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

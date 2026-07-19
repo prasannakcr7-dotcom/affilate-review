@@ -1,0 +1,591 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import { SITE_TITLE } from '../consts';
+import { getLocalizedPath } from '../data/reviews';
+
+interface NavItem {
+	label: string;
+	href: string;
+}
+
+interface Props {
+	title?: string;
+	description?: string;
+	image?: string;
+	categories?: NavItem[];
+	schemaJson?: unknown;
+	country?: 'us' | 'in';
+}
+
+const {
+	country = 'us',
+	title = country === 'in' ? `${SITE_TITLE} | Independent Reviews for India` : `${SITE_TITLE} | Independent Reviews`,
+	description = country === 'in'
+		? 'Objective, data-driven product reviews and affiliate buying guides for Indian shoppers.'
+		: 'Objective, data-driven product reviews and affiliate buying guides.',
+	image,
+	schemaJson,
+	categories = [
+		{ label: 'Electronics', href: '/category/electronics' },
+		{ label: 'Kitchen', href: '/category/kitchen' },
+		{ label: 'Audio', href: '/category/audio' },
+		{ label: 'Home & Garden', href: '/category/home-garden' },
+		{ label: 'Fitness', href: '/category/fitness' },
+		{ label: 'Outdoor', href: '/category/outdoor' },
+	],
+} = Astro.props;
+
+const pathname = Astro.url.pathname;
+const cleanPath = pathname.replace(/^\/in(\/|$)/, '/');
+const siteUrl = Astro.site ? Astro.site.origin : 'https://example.com';
+const usUrl = `${siteUrl}${cleanPath === '/' ? '' : cleanPath}`;
+const inUrl = `${siteUrl}/in${cleanPath === '/' ? '' : cleanPath}`;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<BaseHead title={title} description={description} image={image} />
+		<link rel="alternate" hreflang="en-US" href={usUrl} />
+		<link rel="alternate" hreflang="en-IN" href={inUrl} />
+		<link rel="alternate" hreflang="x-default" href={usUrl} />
+		{schemaJson && <script type="application/ld+json" set:html={JSON.stringify(schemaJson)}></script>}
+		<script is:inline>
+			const storedTheme = localStorage.getItem('theme');
+			document.documentElement.dataset.theme = storedTheme === 'dark' ? 'dark' : 'light';
+		</script>
+	</head>
+	<body>
+		<a class="skip-link" href="#main-content">Skip to content</a>
+		<header class="site-header">
+			<div class="site-container header-row">
+				<a class="brand" href={getLocalizedPath('/', country)} aria-label={`${SITE_TITLE} home`}>
+					<svg class="brand-logo" width="42" height="42" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+						<rect width="200" height="200" rx="36" fill="#14213D"/>
+						<!-- back frame -->
+						<rect x="58" y="58" width="64" height="64" rx="8" fill="none" stroke="#9AA4C4" stroke-width="7"/>
+						<!-- front frame, offset down-right -->
+						<rect x="78" y="78" width="64" height="64" rx="8" fill="#14213D" stroke="#EAE7DD" stroke-width="7"/>
+					</svg>
+					<span class="brand-text">
+						<span class="brand-title"><span class="brand-second">Second</span><span class="brand-look">Look</span></span>
+						<small class="brand-tagline">{country === 'in' ? "Because the first impression isn't enough. (India)" : "Because the first impression isn't enough."}</small>
+					</span>
+				</a>
+
+				<nav class="category-nav" aria-label="Product categories">
+					<a class={`home-link ${cleanPath === '/' ? 'active' : ''}`} href={getLocalizedPath('/', country)} aria-label="Home">
+						<svg viewBox="0 0 24 24" aria-hidden="true">
+							<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z" fill="currentColor" />
+						</svg>
+					</a>
+					<div class="category-links">
+						{categories.map((item) => {
+							const isActive = cleanPath.replace(/\/$/, '') === item.href.replace(/\/$/, '');
+							return (
+								<a href={getLocalizedPath(item.href, country)} class={isActive ? 'active' : undefined}>
+									{item.label}
+								</a>
+							);
+						})}
+					</div>
+				</nav>
+
+				<div class="header-actions">
+					<form class="search-form" action={getLocalizedPath('/reviews', country)} method="get" role="search">
+						<label class="sr-only" for="site-search">Search reviews</label>
+						<input id="site-search" name="q" type="search" placeholder="Search..." />
+						<svg aria-hidden="true" viewBox="0 0 24 24">
+							<path
+								d="m21 21-4.3-4.3m1.3-5.7a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+								fill="none"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2.2"
+							></path>
+						</svg>
+					</form>
+					<button class="theme-toggle" type="button" aria-label="Switch to dark mode" data-theme-toggle>
+						<svg class="sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+							<circle cx="12" cy="12" r="4"></circle>
+							<path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+						</svg>
+						<svg class="moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M20 15.2A8.2 8.2 0 0 1 8.8 4 8.3 8.3 0 1 0 20 15.2Z"></path>
+						</svg>
+					</button>
+					<button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" data-nav-toggle>
+						<svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" fill="currentColor"/>
+						</svg>
+						<svg class="close-icon" viewBox="0 0 24 24" aria-hidden="true">
+							<path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" fill="currentColor"/>
+						</svg>
+					</button>
+				</div>
+			</div>
+		</header>
+
+		<main id="main-content" class="site-main">
+			<slot />
+		</main>
+
+		<footer class="site-footer">
+			<div class="site-container footer-row">
+				<div>
+					<strong>{SITE_TITLE}</strong>
+					<p>{country === 'in' ? 'Independent buying guides, comparison tables, and practical advice for Indian shoppers.' : 'Independent buying guides, comparison tables, and practical advice.'}</p>
+				</div>
+				<nav aria-label="Footer links">
+					<a href={getLocalizedPath('/about', country)}>About</a>
+					<a href={getLocalizedPath('/terms', country)}>Terms & Conditions</a>
+					<a href={getLocalizedPath('/contact', country)}>Contact</a>
+				</nav>
+			</div>
+		</footer>
+
+		<script is:inline>
+			// Theme Toggle
+			const button = document.querySelector('[data-theme-toggle]');
+			const updateButton = () => {
+				const isDark = document.documentElement.dataset.theme === 'dark';
+				button?.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+			};
+			updateButton();
+			button?.addEventListener('click', () => {
+				const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+				document.documentElement.dataset.theme = next;
+				localStorage.setItem('theme', next);
+				updateButton();
+			});
+
+			// Mobile navigation drawer toggle
+			const navToggle = document.querySelector('[data-nav-toggle]');
+			const header = document.querySelector('.site-header');
+			navToggle?.addEventListener('click', () => {
+				const isOpen = header?.classList.toggle('nav-open');
+				navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+			});
+		</script>
+	</body>
+</html>
+
+<style>
+	@font-face {
+		font-family: 'CleanAmpersand';
+		src: local('Georgia'), local('Times New Roman'), local('serif');
+		unicode-range: U+0026;
+	}
+
+	:global(:root) {
+		color-scheme: light;
+		--ar-bg: #fbfaf7;
+		--ar-page: #ffffff;
+		--ar-soft: #f1eee8;
+		--ar-card: #f6f4ef;
+		--ar-text: #111116;
+		--ar-muted: #5f5b66;
+		--ar-border: #ded8cf;
+		--ar-link: #075fc7;
+		--ar-header: #321735;
+		--ar-nav: #0b4d5a;
+		--ar-rule: #c35f2a;
+		--ar-accent: #e76f22;
+		--ar-accent-dark: #b94d12;
+		--ar-score: #0e8a83;
+		--ar-score-alt: #5b6fb1;
+		--ar-panel: #fff3dc;
+		--ar-font-ui: Atkinson, Arial, Helvetica, sans-serif;
+		--ar-font-serif: CleanAmpersand, 'Playfair Display', 'Lora', Georgia, serif;
+	}
+
+	:global(html[data-theme='dark']) {
+		color-scheme: dark;
+		--ar-bg: #121018;
+		--ar-page: #191622;
+		--ar-soft: #24202d;
+		--ar-card: #211d29;
+		--ar-text: #faf7ef;
+		--ar-muted: #c8c0d2;
+		--ar-border: #3a3347;
+		--ar-link: #86c5ff;
+		--ar-header: #1a0d24;
+		--ar-nav: #08363f;
+		--ar-rule: #f28c45;
+		--ar-accent: #ff9b42;
+		--ar-accent-dark: #e67721;
+		--ar-score: #24a99f;
+		--ar-score-alt: #8797e8;
+		--ar-panel: #271f2f;
+	}
+
+	:global(html) {
+		background: var(--ar-bg);
+		scroll-behavior: smooth;
+	}
+
+	:global(body) {
+		margin: 0;
+		background: var(--ar-bg);
+		color: var(--ar-text);
+		font-family: var(--ar-font-ui);
+		font-size: 16px;
+		line-height: 1.45;
+		display: flex;
+		flex-direction: column;
+		min-height: 100vh;
+	}
+
+	:global(h1),
+	:global(h2),
+	:global(h3),
+	:global(h4),
+	:global(h5),
+	:global(h6) {
+		color: var(--ar-text);
+		font-family: var(--ar-font-serif);
+	}
+
+	:global(a) {
+		color: var(--ar-link);
+	}
+
+	:global(img) {
+		max-width: 100%;
+		height: auto;
+		border-radius: 0;
+	}
+
+	.site-container,
+	.site-main {
+		width: min(1120px, calc(100% - 32px));
+		margin-inline: auto;
+	}
+
+	.skip-link {
+		position: absolute;
+		left: 1rem;
+		top: 1rem;
+		z-index: 30;
+		transform: translateY(-150%);
+		background: var(--ar-text);
+		color: var(--ar-bg);
+		padding: 0.5rem 0.75rem;
+		text-decoration: none;
+	}
+
+	.skip-link:focus {
+		transform: translateY(0);
+	}
+
+	.site-header {
+		background: #14213D;
+		color: #ffffff;
+		position: relative;
+	}
+
+	.header-row {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		gap: 1rem;
+		align-items: center;
+		min-height: 4.25rem;
+	}
+
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.65rem;
+		color: #ffffff;
+		text-decoration: none;
+	}
+
+	.brand-logo {
+		width: 42px;
+		height: 42px;
+		display: block;
+		flex-shrink: 0;
+		border-radius: 8px;
+	}
+
+	.brand-text {
+		display: grid;
+		gap: 0.05rem;
+	}
+
+	.brand-title {
+		font-family: Georgia, 'Times New Roman', serif;
+		font-size: 1.45rem;
+		line-height: 1;
+		display: flex;
+		align-items: baseline;
+	}
+
+	.brand-second {
+		color: #FFFFFF;
+		font-weight: 400;
+	}
+
+	.brand-look {
+		color: #FFFFFF;
+		font-weight: 700;
+	}
+
+	.brand-tagline {
+		color: #FFFFFF;
+		font-size: 11px;
+		font-weight: 400;
+		text-transform: none;
+		line-height: 1.2;
+		margin-top: 0.15rem;
+		opacity: 0.75;
+	}
+
+	.category-nav {
+		display: flex;
+		align-items: center;
+		gap: 1.15rem;
+		justify-content: flex-start;
+		padding-left: 1rem;
+	}
+
+	.category-links {
+		display: flex;
+		align-items: center;
+		gap: 1.15rem;
+	}
+
+	.category-links a {
+		color: #FFFFFF;
+		font-size: 0.93rem;
+		font-weight: 500;
+		text-decoration: none;
+		padding: 0.35rem 0;
+		border-bottom: 2px solid transparent;
+		transition: border-color 150ms ease;
+	}
+
+	.category-links a:hover {
+		color: #FFFFFF;
+	}
+
+	.category-links a.active {
+		color: #FFFFFF;
+		font-weight: 600;
+		border-bottom: 2px solid #FFFFFF;
+		padding-bottom: 5px;
+	}
+
+	.home-link {
+		color: #FFFFFF;
+		display: flex;
+		align-items: center;
+		padding: 0.35rem 0;
+		border-bottom: 2px solid transparent;
+		transition: border-color 150ms ease;
+	}
+
+	.home-link.active {
+		border-bottom: 2px solid #FFFFFF;
+		padding-bottom: 5px;
+	}
+
+	.home-link svg {
+		display: block;
+		width: 1.2rem;
+		height: 1.2rem;
+	}
+
+	.header-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+	}
+
+	.search-form {
+		display: flex;
+		align-items: center;
+		width: 11.5rem;
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.08);
+		color: #FFFFFF;
+		padding: 0.28rem 0.62rem 0.28rem 0.75rem;
+	}
+
+	.search-form input {
+		width: 100%;
+		border: 0;
+		background: transparent;
+		color: #FFFFFF;
+		font: inherit;
+		font-size: 0.86rem;
+		outline: 0;
+	}
+
+	.search-form input::placeholder {
+		color: #FFFFFF;
+		opacity: 0.7;
+	}
+
+	.search-form svg {
+		width: 1rem;
+		height: 1rem;
+		margin-right: 4px;
+	}
+
+	.theme-toggle {
+		display: grid;
+		width: 2.15rem;
+		height: 2.15rem;
+		place-items: center;
+		border: 1px solid rgba(255, 255, 255, 0.42);
+		border-radius: 999px;
+		background: rgba(255, 255, 255, 0.12);
+		color: #ffffff;
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.theme-toggle svg {
+		grid-area: 1 / 1;
+		width: 1.1rem;
+		height: 1.1rem;
+		fill: none;
+		stroke: currentColor;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 2;
+	}
+
+	.moon-icon,
+	:global(html[data-theme='dark']) .sun-icon {
+		display: none;
+	}
+
+	:global(html[data-theme='dark']) .moon-icon {
+		display: block;
+	}
+
+	.nav-toggle {
+		display: none;
+		background: transparent;
+		border: none;
+		color: #FFFFFF;
+		cursor: pointer;
+		padding: 0.25rem;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.nav-toggle svg {
+		width: 1.5rem;
+		height: 1.5rem;
+	}
+
+	.nav-toggle .close-icon {
+		display: none;
+	}
+
+	:global(.site-header.nav-open) .nav-toggle .menu-icon {
+		display: none;
+	}
+
+	:global(.site-header.nav-open) .nav-toggle .close-icon {
+		display: block;
+	}
+
+	.site-main {
+		padding: 1.65rem 0 3rem;
+		flex: 1;
+	}
+
+	.site-footer {
+		border-top: 1px solid var(--ar-border);
+		background: var(--ar-page);
+	}
+
+	.footer-row {
+		display: flex;
+		justify-content: space-between;
+		gap: 1.5rem;
+		padding: 1.6rem 0;
+		color: var(--ar-muted);
+		font-size: 0.92rem;
+	}
+
+	.footer-row p {
+		margin: 0.25rem 0 0;
+	}
+
+	.disclosure-text {
+		font-size: 0.8rem;
+		color: var(--ar-muted);
+		margin-top: 0.65rem;
+		line-height: 1.4;
+		max-width: 38rem;
+	}
+
+	.footer-row strong {
+		color: var(--ar-text);
+	}
+
+	.footer-row nav {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.8rem;
+		justify-content: flex-end;
+	}
+
+	@media (max-width: 980px) {
+		.nav-toggle {
+			display: flex;
+		}
+
+		.category-links {
+			display: none;
+			position: absolute;
+			top: 100%;
+			left: 0;
+			right: 0;
+			background: #14213D;
+			border-top: 1px solid rgba(255, 255, 255, 0.08);
+			padding: 1rem 1.5rem;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 1rem;
+			z-index: 100;
+			box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+		}
+
+		.category-links a {
+			width: 100%;
+			padding: 0.5rem 0;
+			border-bottom: none;
+		}
+
+		.category-links a.active {
+			border-bottom: none;
+			color: #FFFFFF;
+			font-weight: 600;
+		}
+
+		:global(.site-header.nav-open) .category-links {
+			display: flex;
+		}
+	}
+
+	@media (max-width: 620px) {
+		.search-form {
+			display: none;
+		}
+
+		.footer-row {
+			flex-direction: column;
+		}
+
+		.footer-row nav {
+			justify-content: flex-start;
+		}
+	}
+</style>

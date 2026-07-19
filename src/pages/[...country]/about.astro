@@ -1,0 +1,281 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getLocalizedPath } from '../../data/reviews';
+
+export async function getStaticPaths() {
+	return [
+		{ params: { country: undefined } }, // default/US
+		{ params: { country: 'in' } },       // India
+	];
+}
+
+const country = (Astro.params.country as 'us' | 'in') || 'us';
+---
+
+<BaseLayout
+	title={country === 'in' ? "About Us | SecondLook India" : "About Us | SecondLook"}
+	description="The story behind our reviews, our criteria, and why we don't review garbage products."
+	country={country}
+>
+	<article class="about-container">
+		<header class="about-header">
+			<span class="sub">Behind the Scenes</span>
+			<h1>No sponsored fluff. No junk products. Just honest breakdowns.</h1>
+		</header>
+
+		<section class="about-hero">
+			<div class="hero-text">
+				<p class="lead">
+					If you've spent any time shopping online recently, you already know the problem. Amazon is flooded with weird, unpronounceable brand names selling cheap duplicates. Google is stuffed with search-optimized "review" sites that exist solely to get you to click affiliate links.
+				</p>
+				<p>
+					I started this site to cut through that noise. I'm the <strong>Gadget Scout</strong>, and I run <strong>SecondLook</strong>. I've spent the better part of the last decade dissecting hardware, testing audio gear, and arguing in enthusiast forums. This site is my attempt to build the kind of product directory I actually wanted to read.
+				</p>
+			</div>
+			<div class="founder-card">
+				<img src="/blog-placeholder-about.jpg" alt="Gadget Scout" />
+				<h3>Gadget Scout</h3>
+			</div>
+		</section>
+
+		<hr class="divider" />
+
+		<section class="core-rules">
+			<h2>The Rules I Live By</h2>
+
+			<div class="rule-grid">
+				<div class="rule-card">
+					<div class="rule-num">01</div>
+					<h3>I don't review garbage.</h3>
+					<p>
+						Your time is too valuable to read reviews about sub-standard products. If a product is poor, cheap, or fundamentally broken, I simply won't write a review for it. That means every device, appliance, or accessory you find on this site has already survived my initial filter and is actually worth buying. I only focus on what is good, and then help you pick the best among them.
+					</p>
+				</div>
+
+				<div class="rule-card">
+					<div class="rule-num">02</div>
+					<h3>The Social Cross-Examination.</h3>
+					<p>
+						My reviews don't happen in a vacuum. Before I write a single word, I crawl Reddit, YouTube, enthusiast forums, and customer feedback boards across social media. I cross-reference my observations with the community consensus. If other reviewers are experiencing long-term durability issues, I investigate and highlight them.
+					</p>
+				</div>
+
+				<div class="rule-card">
+					<div class="rule-num">03</div>
+					<h3>I publish the ugly stuff.</h3>
+					<p>
+						No product is perfect. Even my top-rated "Editor's Choice" picks have flaws. If a premium pair of headphones has a cheap, creaky plastic hinge, or if an air fryer has an annoyingly loud buzzer, I write about it in detail. I never gloss over negative aspects or compromises just to make a sale.
+					</p>
+				</div>
+			</div>
+		</section>
+
+		<section class="how-we-work">
+			<h2>My Process</h2>
+			<p>
+				I break down products by scoring them across multiple weighted categories (like sound quality, battery life, build, and comfort). I display these metrics transparently so you can see exactly where a product excels and where it falls flat. If you care more about durability than price, you can compare products side-by-side using my interactive charts and sort them by what matters to you.
+			</p>
+			<div class="cta-row">
+				<a href={getLocalizedPath('/', country)} class="btn-primary">Browse Reviews</a>
+				<a href={getLocalizedPath('/contact', country)} class="btn-secondary">Get in Touch</a>
+			</div>
+		</section>
+	</article>
+</BaseLayout>
+
+<style>
+	.about-container {
+		max-width: 840px;
+		margin: 0 auto;
+		padding: 1.5rem 1rem;
+	}
+
+	.about-header {
+		text-align: center;
+		margin-bottom: 3.5rem;
+	}
+
+	.about-header .sub {
+		color: var(--ar-accent);
+		font-weight: 800;
+		text-transform: uppercase;
+		font-size: 0.82rem;
+		letter-spacing: 0.05em;
+	}
+
+	.about-header h1 {
+		margin: 0.5rem 0 0;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(2rem, 4vw, 2.75rem);
+		line-height: 1.15;
+		font-weight: 700;
+	}
+
+	.about-hero {
+		display: grid;
+		grid-template-columns: 1fr 240px;
+		gap: 2.5rem;
+		align-items: start;
+		margin-bottom: 3rem;
+	}
+
+	.hero-text .lead {
+		font-size: 1.22rem;
+		line-height: 1.5;
+		color: var(--ar-text);
+		font-family: var(--ar-font-serif);
+		margin-bottom: 1.5rem;
+	}
+
+	.hero-text p {
+		font-size: 1.05rem;
+		line-height: 1.6;
+		color: var(--ar-muted);
+		margin: 0 0 1.25rem;
+	}
+
+	.founder-card {
+		background: var(--ar-card);
+		border: 1px solid var(--ar-border);
+		border-radius: 8px;
+		padding: 1.25rem;
+		text-align: center;
+	}
+
+	.founder-card img {
+		width: 120px;
+		height: 120px;
+		border-radius: 50%;
+		object-fit: cover;
+		margin-bottom: 1rem;
+		border: 2px solid var(--ar-border);
+	}
+
+	.founder-card h3 {
+		margin: 0;
+		font-size: 1.15rem;
+	}
+
+	.founder-card p {
+		margin: 0.25rem 0 0;
+		color: var(--ar-muted);
+		font-size: 0.88rem;
+	}
+
+	.divider {
+		border: 0;
+		border-top: 1px solid var(--ar-border);
+		margin: 3rem 0;
+	}
+
+	.core-rules h2,
+	.how-we-work h2 {
+		font-family: var(--ar-font-serif);
+		font-size: 1.95rem;
+		margin-bottom: 2rem;
+		text-align: center;
+	}
+
+	.rule-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.5rem;
+	}
+
+	.rule-card {
+		background: var(--ar-page);
+		border: 1px solid var(--ar-border);
+		padding: 1.5rem;
+		position: relative;
+	}
+
+	.rule-num {
+		font-size: 2.2rem;
+		font-weight: 900;
+		color: color-mix(in srgb, var(--ar-accent) 25%, transparent);
+		line-height: 1;
+		margin-bottom: 0.5rem;
+	}
+
+	.rule-card h3 {
+		margin: 0 0 0.75rem;
+		font-size: 1.25rem;
+		font-family: var(--ar-font-serif);
+	}
+
+	.rule-card p {
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.5;
+		color: var(--ar-muted);
+	}
+
+	.how-we-work {
+		margin-top: 4.5rem;
+		text-align: center;
+		background: var(--ar-card);
+		border: 1px solid var(--ar-border);
+		border-radius: 8px;
+		padding: 2.5rem 2rem;
+	}
+
+	.how-we-work p {
+		font-size: 1.1rem;
+		line-height: 1.6;
+		color: var(--ar-muted);
+		max-width: 680px;
+		margin: 0 auto 2rem;
+	}
+
+	.cta-row {
+		display: flex;
+		justify-content: center;
+		gap: 1rem;
+	}
+
+	.btn-primary,
+	.btn-secondary {
+		display: inline-flex;
+		align-items: center;
+		font-weight: 700;
+		padding: 0.65rem 1.6rem;
+		border-radius: 4px;
+		text-decoration: none;
+		font-size: 0.95rem;
+	}
+
+	.btn-primary {
+		background: var(--ar-score-alt);
+		color: #ffffff;
+	}
+
+	.btn-primary:hover {
+		opacity: 0.9;
+	}
+
+	.btn-secondary {
+		border: 1px solid var(--ar-border);
+		background: var(--ar-page);
+		color: var(--ar-text);
+	}
+
+	.btn-secondary:hover {
+		background: var(--ar-soft);
+	}
+
+	@media (max-width: 768px) {
+		.about-hero {
+			grid-template-columns: 1fr;
+			gap: 2rem;
+		}
+
+		.founder-card {
+			max-width: 320px;
+			margin: 0 auto;
+		}
+
+		.rule-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

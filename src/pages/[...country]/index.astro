@@ -1,0 +1,532 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../../consts';
+import { getCollection } from 'astro:content';
+import { getLocalizedProduct, getLocalizedPath, toSlug } from '../../data/reviews';
+
+export async function getStaticPaths() {
+	return [
+		{ params: { country: undefined } }, // default/US
+		{ params: { country: 'in' } },       // India
+	];
+}
+
+const country = (Astro.params.country as 'us' | 'in') || 'us';
+
+const reviewEntries = await getCollection('reviews');
+let filteredEntries = reviewEntries.filter((entry) => {
+	const markets = entry.data.markets || ['us', 'in'];
+	return markets.includes(country);
+});
+
+// Fallback logic for homepage: if default/US has no reviews, show India reviews
+let displayCountry = country;
+if (filteredEntries.length === 0 && country === 'us') {
+	displayCountry = 'in';
+	filteredEntries = reviewEntries.filter((entry) => {
+		const markets = entry.data.markets || ['us', 'in'];
+		return markets.includes('in');
+	});
+}
+
+const sortedReviews = filteredEntries.sort((a, b) => b.data.publishDate.valueOf() - a.data.publishDate.valueOf());
+
+// Sort dynamic reviews by overallScore to populate popularReviews dynamically
+const popularReviewsData = [...filteredEntries].sort((a, b) => {
+	const scoreA = a.data.products?.[0]?.overallScore || 0;
+	const scoreB = b.data.products?.[0]?.overallScore || 0;
+	return scoreB - scoreA;
+});
+const popularReviews = popularReviewsData.slice(0, 8).map(r => r.data.title);
+
+// Helper to format date
+const formatDate = (date: Date) => {
+	return date.toLocaleDateString(displayCountry === 'in' ? 'en-IN' : 'en-US', {
+		day: 'numeric',
+		month: 'long',
+		year: 'numeric'
+	});
+};
+
+// Map collection reviews to index format
+const dynamicLatestReviews = sortedReviews.map((entry) => {
+	const rawProduct = entry.data.products.find(p => p.id === entry.data.primaryProductId) || entry.data.products[0];
+	const primaryProduct = getLocalizedProduct(rawProduct, displayCountry);
+	return {
+		category: entry.data.category,
+		title: entry.data.title,
+		date: formatDate(entry.data.publishDate),
+		summary: entry.data.summary,
+		price: `Best Pick: ${primaryProduct.price}`,
+		image: entry.data.heroImage,
+		href: getLocalizedPath(`/reviews/${entry.id}`, displayCountry),
+	};
+});
+
+// Hardcoded static backups to pad if there are fewer than 8 reviews
+const staticBackups = [
+	{
+		category: 'Audio',
+		title: displayCountry === 'in' ? 'The Best Wired Earbuds in India' : 'The Best Wired Earbuds in the US',
+		date: '17 June 2026',
+		summary: 'Our audio team tested popular wired models for sound quality, call clarity, comfort, and cable durability.',
+		price: displayCountry === 'in' ? 'Budget: ₹399-₹1,499' : 'Budget: $9.99-$29.99',
+		image: '/blog-placeholder-1.jpg',
+		href: getLocalizedPath('/reviews/wired-earbuds', displayCountry),
+	},
+	{
+		category: 'Kitchen',
+		title: displayCountry === 'in' ? 'The Best Air Fryers for Indian Kitchens' : 'The Best Air Fryers for US Kitchens',
+		date: '12 June 2026',
+		summary: 'We cooked samosas, fries, tikkas, and leftovers to find the most practical air fryers for daily use.',
+		price: displayCountry === 'in' ? 'Mid-range: ₹6,999-₹11,999' : 'Mid-range: $79-$149',
+		image: '/blog-placeholder-2.jpg',
+		href: getLocalizedPath('/category/kitchen', displayCountry),
+	},
+	{
+		category: 'Home & Garden',
+		title: displayCountry === 'in' ? 'The Best RO Water Purifiers' : 'The Best Water Purifiers',
+		date: '9 June 2026',
+		summary: 'A practical comparison of water taste, service reach, filter cost, tank size, and annual ownership value.',
+		price: displayCountry === 'in' ? 'Premium: ₹11,999-₹18,999' : 'Premium: $149-$299',
+		image: '/blog-placeholder-3.jpg',
+		href: getLocalizedPath('/category/home-garden', displayCountry),
+	},
+	{
+		category: 'Fitness',
+		title: displayCountry === 'in' ? 'The Best Fitness Bands for India' : 'The Best Fitness Bands in the US',
+		date: '3 June 2026',
+		summary: 'We checked step accuracy, battery life, app quality, sleep tracking, and outdoor readability.',
+		price: displayCountry === 'in' ? 'Value: ₹1,999-₹6,999' : 'Value: $29-$89',
+		image: '/blog-placeholder-4.jpg',
+		href: getLocalizedPath('/category/fitness', displayCountry),
+	},
+];
+
+// Combine dynamic reviews with static backups, up to exactly 8 reviews
+const displayedReviews = [...dynamicLatestReviews];
+
+for (const backup of staticBackups) {
+	if (displayedReviews.length >= 8) break;
+	const isDuplicate = displayedReviews.some(r => r.title === backup.title || r.href === backup.href);
+	if (!isDuplicate) {
+		displayedReviews.push(backup);
+	}
+}
+
+const finalDisplayedReviews = displayedReviews.slice(0, 8);
+
+// Popular panel reviews links mapping
+const getPopularReviewHref = (titleText: string) => {
+	const match = sortedReviews.find(r => r.data.title.toLowerCase().includes(titleText.toLowerCase()) || titleText.toLowerCase().includes(r.data.title.toLowerCase()));
+	if (match) return getLocalizedPath(`/reviews/${match.id}`, displayCountry);
+	if (titleText.includes('Wired Earbuds')) return getLocalizedPath('/reviews/wired-earbuds', displayCountry);
+	return getLocalizedPath('/review-slug', displayCountry);
+};
+
+const categories = [
+	{ label: 'Electronics', icon: 'electronics' },
+	{ label: 'Kitchen', icon: 'kitchen' },
+	{ label: 'Audio', icon: 'audio' },
+	{ label: 'Home & Garden', icon: 'home' },
+	{ label: 'Fitness', icon: 'fitness' },
+	{ label: 'Outdoor', icon: 'outdoor' },
+];
+---
+
+<BaseLayout title={displayCountry === 'in' ? `${SITE_TITLE} | Product Reviews & Buying Guides for India` : `${SITE_TITLE} | Product Reviews & Buying Guides`} description={SITE_DESCRIPTION} country={displayCountry}>
+	<section class="top-story" aria-labelledby="featured-title">
+		<article class="lead-review">
+			{sortedReviews.length > 0 ? (
+				<>
+					<a href={getLocalizedPath(`/reviews/${sortedReviews[0].id}`, displayCountry)} class="lead-image">
+						<img src={sortedReviews[0].data.heroImage} alt={sortedReviews[0].data.title} width="760" height="420" />
+					</a>
+					<div class="lead-copy">
+						<h1 id="featured-title"><a href={getLocalizedPath(`/reviews/${sortedReviews[0].id}`, displayCountry)}>{sortedReviews[0].data.title}</a></h1>
+						<p>{sortedReviews[0].data.summary}</p>
+					</div>
+				</>
+			) : (
+				<>
+					<a href={getLocalizedPath('/reviews/wired-earbuds', displayCountry)} class="lead-image">
+						<img src="/blog-placeholder-1.jpg" alt="Wired earbuds arranged on a bright surface" width="760" height="420" />
+					</a>
+					<div class="lead-copy">
+						<h1 id="featured-title"><a href={getLocalizedPath('/reviews/wired-earbuds', displayCountry)}>{displayCountry === 'in' ? 'The Best Wired Earbuds in India' : 'The Best Wired Earbuds'}</a></h1>
+						<p>
+							We analyzed and compared popular wired earbuds based on specifications, customer feedback,
+							and expert analysis to find the best options.
+						</p>
+					</div>
+				</>
+			)}
+		</article>
+
+		<aside class="popular-panel" aria-labelledby="popular-title">
+			<h2 id="popular-title">Most Popular</h2>
+			<ul>
+				{popularReviews.map((item) => <li><a href={getPopularReviewHref(item)}>{item}</a></li>)}
+			</ul>
+			<a class="see-all" href={getLocalizedPath('/reviews', displayCountry)}>See all best-in-class reviews &gt;</a>
+		</aside>
+	</section>
+
+	<section class="content-section" aria-labelledby="latest-title">
+		<div class="section-heading">
+			<h2 id="latest-title">Latest Reviews</h2>
+			<a href={getLocalizedPath('/reviews', displayCountry)}>View all reviews</a>
+		</div>
+
+		<div class="review-grid">
+			{
+				finalDisplayedReviews.map((review) => (
+					<article class="review-card">
+						<a href={review.href} class="review-image">
+							<img src={review.image} alt="" loading="lazy" width="360" height="230" />
+						</a>
+						<div class="review-card-copy">
+							<span>{review.category}</span>
+							<h3><a href={review.href}>{review.title}</a></h3>
+							<time>{review.date}</time>
+							<p>{review.summary}</p>
+							<strong>{review.price}</strong>
+							<a class="read-link" href={review.href}>Read Review &gt;</a>
+						</div>
+					</article>
+				))
+			}
+		</div>
+	</section>
+
+	<section class="content-section" aria-labelledby="category-title">
+		<div class="section-heading">
+			<h2 id="category-title">Browse By Category</h2>
+		</div>
+		<div class="category-tray">
+			{
+				categories.map((category) => (
+					<a href={getLocalizedPath(`/category/${toSlug(category.label)}`, displayCountry)} aria-label={`Browse ${category.label}`}>
+						<svg class={`category-svg ${category.icon}`} viewBox="0 0 48 48" aria-hidden="true">
+							{category.icon === 'electronics' && (
+								<>
+									<rect x="10" y="11" width="28" height="21" rx="2"></rect>
+									<path d="M19 38h10M24 32v6"></path>
+								</>
+							)}
+							{category.icon === 'kitchen' && (
+								<>
+									<path d="M16 8v32M24 8v32M33 9c4 6 4 13 0 19v12"></path>
+									<path d="M12 19h16"></path>
+								</>
+							)}
+							{category.icon === 'audio' && (
+								<>
+									<path d="M14 27v-5a10 10 0 0 1 20 0v5"></path>
+									<rect x="9" y="25" width="8" height="12" rx="3"></rect>
+									<rect x="31" y="25" width="8" height="12" rx="3"></rect>
+								</>
+							)}
+							{category.icon === 'home' && (
+								<>
+									<path d="m8 23 16-13 16 13"></path>
+									<path d="M13 21v19h22V21"></path>
+									<path d="M21 40V28h6v12"></path>
+								</>
+							)}
+							{category.icon === 'fitness' && (
+								<>
+									<path d="M7 25h7l3-8 7 18 4-10h13"></path>
+									<circle cx="24" cy="24" r="18"></circle>
+								</>
+							)}
+							{category.icon === 'outdoor' && (
+								<>
+									<path d="M7 38h34"></path>
+									<path d="m14 38 10-22 10 22"></path>
+									<path d="M24 16 14 38h20L24 16Z"></path>
+									<path d="M33 12h6M36 9v6"></path>
+								</>
+							)}
+						</svg>
+						<strong>{category.label}</strong>
+					</a>
+				))
+			}
+		</div>
+	</section>
+</BaseLayout>
+
+<style>
+	.top-story {
+		display: grid;
+		grid-template-columns: minmax(0, 1.45fr) minmax(20rem, 0.95fr);
+		gap: 0;
+		margin-top: 0.25rem;
+		background: var(--ar-card);
+	}
+
+	.lead-review,
+	.popular-panel {
+		background: var(--ar-card);
+	}
+
+	.lead-image {
+		display: block;
+		aspect-ratio: 3 / 2;
+		overflow: hidden;
+		background: #ffffff;
+		border-bottom: 1px solid var(--ar-border);
+	}
+
+	.lead-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.lead-copy {
+		padding: 1.2rem 1.3rem 1.35rem;
+	}
+
+	.lead-copy h1 {
+		margin: 0 0 0.45rem;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(1.8rem, 3vw, 2.35rem);
+		line-height: 1.08;
+	}
+
+	.lead-copy h1 a {
+		color: var(--ar-text);
+		text-decoration: none;
+	}
+
+	.lead-copy p {
+		max-width: 48rem;
+		margin: 0;
+		color: var(--ar-muted);
+		font-family: var(--ar-font-serif);
+		font-size: 1.02rem;
+		line-height: 1.45;
+	}
+
+	.popular-panel {
+		padding: 1.5rem 1.25rem;
+	}
+
+	.popular-panel h2,
+	.section-heading h2 {
+		margin: 0;
+		color: var(--ar-text);
+		font-family: var(--ar-font-serif);
+		font-size: 1.65rem;
+		line-height: 1.1;
+	}
+
+	.popular-panel h2 {
+		padding-bottom: 0.4rem;
+		border-bottom: 1px dotted var(--ar-rule);
+	}
+
+	.popular-panel ul {
+		display: grid;
+		gap: 0.95rem;
+		margin: 1.1rem 0 1.3rem;
+		padding: 0;
+		list-style: none;
+	}
+
+	.popular-panel a,
+	.read-link,
+	.section-heading a {
+		color: var(--ar-link);
+		text-decoration: none;
+	}
+
+	.popular-panel li a {
+		font-family: 'Lora', Georgia, serif;
+		font-size: 1.04rem;
+		font-weight: 700;
+		line-height: 1.25;
+	}
+
+	.see-all {
+		font-size: 0.92rem;
+	}
+
+
+
+	.content-section {
+		margin-top: 2rem;
+	}
+
+	.section-heading {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-bottom: 0.9rem;
+		border-bottom: 3px solid var(--ar-rule);
+		padding-bottom: 0.35rem;
+	}
+
+	.review-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 1rem;
+	}
+
+	.review-card {
+		border: 1px solid var(--ar-border);
+		background: var(--ar-page);
+	}
+
+	.review-image {
+		display: block;
+		aspect-ratio: 4 / 3;
+		overflow: hidden;
+		background: #ffffff;
+		border-bottom: 1px solid var(--ar-border);
+	}
+
+	.review-image img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.review-card-copy {
+		padding: 0.85rem;
+	}
+
+	.review-card-copy span {
+		color: var(--ar-accent);
+		font-size: 0.72rem;
+		font-weight: 800;
+		text-transform: uppercase;
+	}
+
+	.review-card-copy h3 {
+		margin: 0.2rem 0;
+		font-family: var(--ar-font-serif);
+		font-size: 1.15rem;
+		line-height: 1.18;
+	}
+
+	.review-card-copy h3 a {
+		color: var(--ar-link);
+		text-decoration: none;
+	}
+
+	.review-card-copy time,
+	.review-card-copy p,
+	.review-card-copy strong {
+		display: block;
+		font-size: 0.88rem;
+	}
+
+	.review-card-copy time {
+		color: var(--ar-muted);
+	}
+
+	.review-card-copy p {
+		margin: 0.45rem 0;
+		color: var(--ar-muted);
+		line-height: 1.38;
+	}
+
+	.review-card-copy strong {
+		margin-bottom: 0.35rem;
+		color: var(--ar-text);
+	}
+
+	.category-tray {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: 0.75rem;
+	}
+
+	.category-tray a {
+		position: relative;
+		display: grid;
+		gap: 0.65rem;
+		place-items: center;
+		min-height: 8rem;
+		border: 1px solid var(--ar-border);
+		border-radius: 0.75rem;
+		background: var(--ar-page);
+		color: var(--ar-text);
+		text-decoration: none;
+		transition:
+			border-color 160ms ease,
+			background 160ms ease,
+			transform 160ms ease;
+	}
+
+	.category-tray a:hover {
+		border-color: var(--ar-score);
+		background: color-mix(in srgb, var(--ar-score) 7%, var(--ar-page));
+		transform: translateY(-2px);
+	}
+
+	.category-svg {
+		width: 3.6rem;
+		height: 3.6rem;
+		box-sizing: border-box;
+		border-radius: 1rem;
+		padding: 0.62rem;
+		background: color-mix(in srgb, var(--ar-score) 12%, var(--ar-page));
+		fill: none;
+		stroke: var(--ar-score);
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		stroke-width: 3;
+	}
+
+	.category-tray a:nth-child(2) .category-svg {
+		background: color-mix(in srgb, var(--ar-accent) 14%, var(--ar-page));
+		stroke: var(--ar-accent);
+	}
+
+	.category-tray a:nth-child(3) .category-svg {
+		background: color-mix(in srgb, var(--ar-score-alt) 14%, var(--ar-page));
+		stroke: var(--ar-score-alt);
+	}
+
+	.category-tray a:nth-child(4) .category-svg {
+		background: color-mix(in srgb, #b65fcf 14%, var(--ar-page));
+		stroke: #9b47b8;
+	}
+
+	.category-tray a:nth-child(5) .category-svg {
+		background: color-mix(in srgb, #d2416b 13%, var(--ar-page));
+		stroke: #c92e5b;
+	}
+
+	.category-tray a:nth-child(6) .category-svg {
+		background: color-mix(in srgb, #d9a018 16%, var(--ar-page));
+		stroke: #b88408;
+	}
+
+	.category-tray strong {
+		font-size: 0.95rem;
+	}
+
+	@media (max-width: 920px) {
+		.top-story {
+			grid-template-columns: 1fr;
+		}
+
+		.review-grid,
+		.category-tray {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 560px) {
+		.review-grid,
+		.category-tray {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

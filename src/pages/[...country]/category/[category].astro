@@ -1,0 +1,180 @@
+---
+import { getCollection } from 'astro:content';
+import { reviewCategories, toSlug, toTitle, getLocalizedPath } from '../../../data/reviews';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+	const reviewEntries = await getCollection('reviews');
+	const categorySlugs = new Set([
+		...reviewCategories.map(toSlug),
+		...reviewEntries.map((entry) => toSlug(entry.data.category)),
+	]);
+
+	const paths = [];
+	for (const category of categorySlugs) {
+		paths.push({ params: { country: 'in', category } });
+	}
+	return paths;
+}
+
+const country = (Astro.params.country as 'us' | 'in') || 'us';
+const reviewEntries = await getCollection('reviews');
+const slug = Astro.params.category ?? '';
+const title = toTitle(slug);
+
+const reviews = reviewEntries.filter((entry) => {
+	if (toSlug(entry.data.category) !== slug) return false;
+	const markets = entry.data.markets || ['us', 'in'];
+	return markets.includes(country);
+});
+---
+
+<BaseLayout title={`${title} Reviews | ${country === 'in' ? 'SecondLook India' : 'SecondLook'}`} description={`Browse ${title} product reviews and buying guides.`} country={country}>
+	<section class="category-page">
+		<header>
+			<p>Category</p>
+			<h1>{title} Reviews</h1>
+			<span>{reviews.length} review{reviews.length === 1 ? '' : 's'} published</span>
+		</header>
+
+		{
+			reviews.length > 0 ? (
+				<div class="category-grid">
+					{reviews.map((entry) => (
+						<article>
+							<a href={getLocalizedPath(`/reviews/${entry.id}`, country)} class="image-link">
+								<img src={entry.data.heroImage} alt="" loading="lazy" width="420" height="260" />
+							</a>
+							<div>
+								<strong>{entry.data.category}</strong>
+								<h2><a href={getLocalizedPath(`/reviews/${entry.id}`, country)}>{entry.data.title}</a></h2>
+								<p>{entry.data.summary}</p>
+								<a href={getLocalizedPath(`/reviews/${entry.id}`, country)}>Read review &gt;</a>
+							</div>
+						</article>
+					))}
+				</div>
+			) : (
+				<div class="empty-state">
+					<h2>No {title} reviews yet</h2>
+					<p>Once you add a review with category "{title}", it will appear here automatically.</p>
+				</div>
+			)
+		}
+	</section>
+</BaseLayout>
+
+<style>
+	.category-page header {
+		border-bottom: 3px solid var(--ar-rule);
+		margin-bottom: 1.25rem;
+		padding-bottom: 0.75rem;
+	}
+
+	.category-page header p {
+		margin: 0 0 0.25rem;
+		color: var(--ar-accent);
+		font-size: 0.78rem;
+		font-weight: 900;
+		text-transform: uppercase;
+	}
+
+	h1 {
+		margin: 0;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(2rem, 5vw, 3rem);
+		line-height: 1.05;
+	}
+
+	header span {
+		color: var(--ar-muted);
+	}
+
+	.category-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 1.5rem;
+	}
+
+	article {
+		display: grid;
+		grid-template-columns: 240px 1fr;
+		border: 1px solid var(--ar-border);
+		background: var(--ar-page);
+		align-items: stretch;
+	}
+
+	.image-link {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		aspect-ratio: 4 / 3;
+		overflow: hidden;
+		background: #ffffff;
+		border-right: 1px solid var(--ar-border);
+	}
+
+	.image-link img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	article div {
+		padding: 1.25rem 1.5rem 1.25rem 2rem;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	article strong {
+		color: var(--ar-accent);
+		font-size: 0.75rem;
+		text-transform: uppercase;
+	}
+
+	article h2 {
+		margin: 0.25rem 0 0.5rem;
+		font-family: var(--ar-font-serif);
+		font-size: 1.45rem;
+		line-height: 1.16;
+	}
+
+	article h2 a,
+	article div > a {
+		text-decoration: none;
+	}
+
+	article p,
+	.empty-state p {
+		color: var(--ar-muted);
+		margin-bottom: 0.75rem;
+	}
+
+	.empty-state {
+		border: 1px solid var(--ar-border);
+		background: var(--ar-panel);
+		padding: 1.25rem;
+	}
+
+	.empty-state h2 {
+		margin: 0 0 0.35rem;
+		font-family: var(--ar-font-serif);
+	}
+
+	.empty-state p {
+		margin: 0;
+	}
+
+	@media (max-width: 768px) {
+		article {
+			grid-template-columns: 1fr;
+		}
+
+		.image-link {
+			aspect-ratio: 16 / 10;
+			border-right: none;
+			border-bottom: 1px solid var(--ar-border);
+		}
+	}
+</style>

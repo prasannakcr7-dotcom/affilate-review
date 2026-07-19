@@ -1,0 +1,145 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getLocalizedPath } from '../../data/reviews';
+
+export async function getStaticPaths() {
+	return [
+		{ params: { country: undefined } }, // default/US
+		{ params: { country: 'in' } },       // India
+	];
+}
+
+const country = (Astro.params.country as 'us' | 'in') || 'us';
+---
+
+<BaseLayout
+	title={country === 'in' ? "Terms of Service | SecondLook India" : "Terms of Service | SecondLook"}
+	description="The legal terms, rules, and conditions for using our website."
+	country={country}
+>
+	<article class="legal-container">
+		<header class="legal-header">
+			<span>Legal Policy</span>
+			<h1>Terms & Conditions</h1>
+			<p class="last-updated">Last Updated: July 2026</p>
+		</header>
+
+		<section class="legal-content">
+			<p class="lead">
+				Welcome to our website. If you continue to browse and use this website, you are agreeing to comply with and be bound by the following terms and conditions of use.
+			</p>
+
+			<h2>1. Intellectual Property</h2>
+			<p>
+				All content, tables, graphics, overall scores, and comparison formulas displayed on this site are the property of our brand. You may not copy, scrape, modify, or redistribute our comparison charts or metrics databases without our express written permission. However, you are more than welcome to link directly to our reviews and share them on social media.
+			</p>
+
+			<h2>2. Use of Our Data</h2>
+			<p>
+				The product metrics, benchmarks, pros, cons, and scores we provide are based on our research and cross-examination of reviews. This data is provided for informational and comparative purposes only. While we do our absolute best to ensure our spec grids and prices are correct, manufacturers frequently change product details, hardware versions, or pricing. We do not guarantee the completeness or absolute accuracy of our charts.
+			</p>
+
+			<h2>3. Third-Party Links & Products</h2>
+			<p>
+				We frequently link to third-party stores (such as Amazon) to check pricing or availability. We do not own, control, or take responsibility for any third-party websites, their checkout policies, shipping conditions, or their terms of service. Any transaction you make with a third-party seller is strictly between you and them.
+			</p>
+
+			<h2>4. User Submissions & Feedback</h2>
+			<p>
+				If you send us feedback, product suggestions, or email us review ideas, you agree that we can use these comments or suggestions in our content without restriction or compensation to you. We love getting feedback, but we must protect our editorial independence.
+			</p>
+
+			<h2>5. Editorial Independence & Disclaimers</h2>
+			<p>
+				Our comparison lists and ratings are determined entirely by our team. We do not accept payment to rank a product higher or modify our scores. If a manufacturer sends us a product for testing, we will disclose it, but it does not buy them a positive score. 
+			</p>
+
+			<h2>6. Limitation of Liability</h2>
+			<p>
+				We are not liable for any direct, indirect, incidental, or consequential damages resulting from your use of this site or purchase of any product based on our evaluations. You buy and use products at your own discretion and risk.
+			</p>
+
+			<h2>7. Changes to These Terms</h2>
+			<p>
+				We reserve the right to modify these terms at any time. When we make updates, we will update the "Last Updated" date at the top of this page.
+			</p>
+
+			<hr class="divider" />
+
+			<div class="legal-footer">
+				<p>Have questions about these terms? Feel free to <a href={getLocalizedPath('/contact', country)}>contact us</a>.</p>
+			</div>
+		</section>
+	</article>
+</BaseLayout>
+
+<style>
+	.legal-container {
+		max-width: 780px;
+		margin: 0 auto;
+		padding: 1.5rem 1rem;
+	}
+
+	.legal-header {
+		border-bottom: 3px solid var(--ar-rule);
+		margin-bottom: 2rem;
+		padding-bottom: 1rem;
+	}
+
+	.legal-header span {
+		color: var(--ar-accent);
+		font-weight: 800;
+		text-transform: uppercase;
+		font-size: 0.8rem;
+		letter-spacing: 0.05em;
+	}
+
+	.legal-header h1 {
+		margin: 0.35rem 0 0.15rem;
+		font-family: var(--ar-font-serif);
+		font-size: clamp(2.2rem, 5vw, 3rem);
+		line-height: 1.05;
+	}
+
+	.last-updated {
+		margin: 0;
+		color: var(--ar-muted);
+		font-size: 0.9rem;
+	}
+
+	.legal-content h2 {
+		margin: 2.2rem 0 0.75rem;
+		font-family: var(--ar-font-serif);
+		font-size: 1.45rem;
+		line-height: 1.25;
+	}
+
+	.legal-content p {
+		margin: 0 0 1.25rem;
+		font-size: 1.05rem;
+		line-height: 1.55;
+		color: var(--ar-muted);
+	}
+
+	.legal-content .lead {
+		font-size: 1.15rem;
+		color: var(--ar-text);
+		line-height: 1.5;
+	}
+
+	.divider {
+		border: 0;
+		border-top: 1px dotted var(--ar-border);
+		margin: 3rem 0 1.5rem;
+	}
+
+	.legal-footer {
+		text-align: center;
+		font-size: 0.95rem;
+	}
+
+	.legal-footer a {
+		font-weight: 700;
+		text-decoration: underline;
+	}
+</style>
