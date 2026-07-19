@@ -34,18 +34,45 @@ const primaryProduct =
 
 const metricWidth = (score: number) => `${Math.max(0, Math.min(10, score)) * 10}%`;
 
-const schemaJson = {
-	'@context': 'https://schema.org',
+// Fetch other reviews in the same category for contextual cross-linking
+const allReviews = await getCollection('reviews');
+const relatedReviews = allReviews
+	.filter((r) => r.id !== entry.id && r.data.category === review.category)
+	.slice(0, 3)
+	.map((r) => {
+		const rawProd = r.data.products.find(p => p.id === r.data.primaryProductId) || r.data.products[0];
+		const localizedProd = getLocalizedProduct(rawProd, country);
+		return {
+			title: r.data.title,
+			heroImage: r.data.heroImage,
+			summary: r.data.summary,
+			price: localizedProd.price,
+			href: getLocalizedPath(`/reviews/${r.id}`, country),
+		};
+	});
+
+const siteUrl = Astro.site ? Astro.site.origin : 'https://example.com';
+const authorUrl = `${siteUrl}${getLocalizedPath('/about', country)}`;
+
+const reviewSchema = {
 	'@type': 'Review',
 	headline: `${primaryProduct.name} Review`,
 	description: review.summary,
 	itemReviewed: {
 		'@type': 'Product',
 		name: primaryProduct.name,
+		image: `${siteUrl}${review.heroImage}`,
 		brand: {
 			'@type': 'Brand',
 			name: primaryProduct.brand,
 		},
+		offers: {
+			'@type': 'Offer',
+			price: primaryProduct.price.replace(/[^0-9.]/g, ''),
+			priceCurrency: country === 'in' ? 'INR' : 'USD',
+			availability: 'https://schema.org/InStock',
+			url: primaryProduct.buyUrl,
+		}
 	},
 	reviewRating: {
 		'@type': 'Rating',
@@ -54,9 +81,53 @@ const schemaJson = {
 		worstRating: '1',
 	},
 	author: {
+		'@type': 'Person',
+		name: 'Gadget Scout',
+		url: authorUrl,
+	},
+	publisher: {
 		'@type': 'Organization',
 		name: country === 'in' ? 'SecondLook India' : 'SecondLook',
-	},
+		logo: {
+			'@type': 'ImageObject',
+			url: `${siteUrl}/favicon.svg`
+		}
+	}
+};
+
+const faqSchema = {
+	'@type': 'FAQPage',
+	mainEntity: [
+		{
+			'@type': 'Question',
+			name: `Is the ${primaryProduct.name} worth buying?`,
+			acceptedAnswer: {
+				'@type': 'Answer',
+				text: `${review.summary} It scores ${primaryProduct.overallScore} out of 100 on our objective testing metrics, making it a competitive choice in the ${review.category} category.`
+			}
+		},
+		{
+			'@type': 'Question',
+			name: `What are the pros and cons of the ${primaryProduct.name}?`,
+			acceptedAnswer: {
+				'@type': 'Answer',
+				text: `Key strengths include: ${primaryProduct.pros.slice(0, 3).join(', ')}. Key limitations include: ${primaryProduct.cons.slice(0, 3).join(', ')}.`
+			}
+		},
+		{
+			'@type': 'Question',
+			name: `How much does the ${primaryProduct.name} cost?`,
+			acceptedAnswer: {
+				'@type': 'Answer',
+				text: `The ${primaryProduct.name} has a retail list price of ${primaryProduct.price}. You can check current pricing and stock availability directly on Amazon.`
+			}
+		}
+	]
+};
+
+const schemaJson = {
+	'@context': 'https://schema.org',
+	'@graph': [reviewSchema, faqSchema]
 };
 
 // A helper function to create safe IDs for the table of contents
@@ -171,6 +242,47 @@ const slugify = (text: string) =>
 		</div>
 
 		<SideBySideComparison primaryProductId={review.primaryProductId} products={resolvedProducts} />
+
+		{relatedReviews.length > 0 && (
+			<section class="related-reviews-section">
+				<hr class="section-divider" />
+				<h2>More {review.category} Reviews</h2>
+				<div class="related-grid">
+					{relatedReviews.map((item) => (
+						<article class="related-card">
+							<a href={item.href} class="related-image-link">
+								<img src={item.heroImage} alt="" loading="lazy" width="180" height="120" />
+							</a>
+							<div class="related-copy">
+								<h3><a href={item.href}>{item.title}</a></h3>
+								<p>{item.summary}</p>
+								<strong>Best Pick: {item.price}</strong>
+								<a href={item.href} class="read-link">Read Review &gt;</a>
+							</div>
+						</article>
+					))}
+				</div>
+			</section>
+		)}
+
+		<section class="review-faqs-section">
+			<hr class="section-divider" />
+			<h2>Frequently Asked Questions</h2>
+			<div class="faq-list">
+				<div class="faq-item">
+					<h3>Is the {primaryProduct.name} worth buying?</h3>
+					<p>{review.summary} It scores {primaryProduct.overallScore} out of 100 on our objective testing metrics, making it a competitive choice in the {review.category} category.</p>
+				</div>
+				<div class="faq-item">
+					<h3>What are the pros and cons of the {primaryProduct.name}?</h3>
+					<p>Key strengths include: {primaryProduct.pros.slice(0, 3).join(', ')}. Key limitations include: {primaryProduct.cons.slice(0, 3).join(', ')}.</p>
+				</div>
+				<div class="faq-item">
+					<h3>How much does the {primaryProduct.name} cost?</h3>
+					<p>The {primaryProduct.name} has a retail list price of {primaryProduct.price}. You can check current pricing and stock availability directly on Amazon.</p>
+				</div>
+			</div>
+		</section>
 	</article>
 </BaseLayout>
 
@@ -558,5 +670,130 @@ const slugify = (text: string) =>
 		.pros-cons {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* Related Reviews Widget Styles */
+	.related-reviews-section {
+		margin-top: 3.5rem;
+	}
+
+	.section-divider {
+		border: 0;
+		border-top: 1px solid var(--ar-border);
+		margin-bottom: 2rem;
+	}
+
+	.related-reviews-section h2 {
+		font-family: var(--ar-font-serif);
+		font-size: 1.65rem;
+		margin-bottom: 1.5rem;
+		color: var(--ar-text);
+	}
+
+	.related-grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 1.25rem;
+	}
+
+	.related-card {
+		border: 1px solid var(--ar-border);
+		background: var(--ar-page);
+		display: flex;
+		flex-direction: column;
+	}
+
+	.related-image-link {
+		display: block;
+		aspect-ratio: 16 / 10;
+		overflow: hidden;
+		background: #ffffff;
+		border-bottom: 1px solid var(--ar-border);
+	}
+
+	.related-image-link img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+
+	.related-copy {
+		padding: 1rem;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+	}
+
+	.related-copy h3 {
+		margin: 0 0 0.4rem;
+		font-size: 1.05rem;
+		font-family: var(--ar-font-serif);
+		line-height: 1.22;
+	}
+
+	.related-copy h3 a {
+		color: var(--ar-link);
+		text-decoration: none;
+	}
+
+	.related-copy p {
+		margin: 0 0 0.6rem;
+		font-size: 0.86rem;
+		color: var(--ar-muted);
+		line-height: 1.35;
+		flex: 1;
+	}
+
+	.related-copy strong {
+		display: block;
+		font-size: 0.85rem;
+		margin-bottom: 0.4rem;
+		color: var(--ar-text);
+	}
+
+	.related-copy .read-link {
+		font-size: 0.85rem;
+		color: var(--ar-link);
+		text-decoration: none;
+		font-weight: 600;
+	}
+
+	@media (max-width: 768px) {
+		.related-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* FAQ Section Styles */
+	.review-faqs-section {
+		margin-top: 3.5rem;
+		margin-bottom: 2rem;
+	}
+
+	.faq-list {
+		display: flex;
+		flex-direction: column;
+		gap: 1.25rem;
+	}
+
+	.faq-item {
+		background: var(--ar-card);
+		border: 1px solid var(--ar-border);
+		padding: 1.5rem;
+		border-radius: 6px;
+	}
+
+	.faq-item h3 {
+		margin: 0 0 0.6rem;
+		font-family: var(--ar-font-serif);
+		font-size: 1.2rem;
+		color: var(--ar-text);
+	}
+
+	.faq-item p {
+		margin: 0;
+		font-size: 0.95rem;
+		line-height: 1.45;
+		color: var(--ar-muted);
 	}
 </style>

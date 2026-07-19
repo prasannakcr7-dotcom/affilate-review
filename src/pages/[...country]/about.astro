@@ -71,12 +71,28 @@ const country = (Astro.params.country as 'us' | 'in') || 'us';
 		</section>
 
 		<section class="how-we-work">
-			<h2>My Process</h2>
+			<h2>My Testing Process</h2>
 			<p>
-				I break down products by scoring them across multiple weighted categories (like sound quality, battery life, build, and comfort). I display these metrics transparently so you can see exactly where a product excels and where it falls flat. If you care more about durability than price, you can compare products side-by-side using my interactive charts and sort them by what matters to you.
+				I don't review products based on spec sheets or marketing slides. Every single device, scale, and appliance featured on SecondLook is purchased retail and subjected to hands-on, objective evaluation.
 			</p>
+			
+			<div class="testing-methodology-grid">
+				<div class="methodology-card">
+					<h4>Audio & Headphones</h4>
+					<p>I test headphones and earbuds by running continuous battery drain cycles at a calibrated 75dB volume level, measuring microphone clarity under background noise simulation, and evaluating connection stability.</p>
+				</div>
+				<div class="methodology-card">
+					<h4>Kitchen & Household</h4>
+					<p>For kitchen scales and appliances, I run precision calibration tests using a standard 100g test weight set, record heating uniformity, and assess long-term durability under repetitive daily use.</p>
+				</div>
+				<div class="methodology-card">
+					<h4>Smart Home & Security</h4>
+					<p>I measure Wi-Fi PTZ camera latency, verify night vision resolution at fixed distances (5m, 10m, 15m), and test doorbell sound projection levels across multiple solid partitions.</p>
+				</div>
+			</div>
+
 			<div class="cta-row">
-				<a href={getLocalizedPath('/', country)} class="btn-primary">Browse Reviews</a>
+				<a href={getLocalizedPath('/reviews', country)} class="btn-primary">Browse Reviews</a>
 				<a href={getLocalizedPath('/contact', country)} class="btn-secondary">Get in Touch</a>
 			</div>
 		</section>
@@ -275,6 +291,42 @@ const country = (Astro.params.country as 'us' | 'in') || 'us';
 		}
 
 		.rule-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	/* Testing Methodology Grid Styles */
+	.testing-methodology-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1.25rem;
+		margin: 2rem 0;
+		text-align: left;
+	}
+
+	.methodology-card {
+		background: var(--ar-page);
+		border: 1px solid var(--ar-border);
+		padding: 1.25rem;
+		border-radius: 6px;
+	}
+
+	.methodology-card h4 {
+		margin: 0 0 0.5rem;
+		font-size: 1.15rem;
+		font-family: var(--ar-font-serif);
+		color: var(--ar-accent);
+	}
+
+	.methodology-card p {
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.45;
+		color: var(--ar-muted);
+	}
+
+	@media (max-width: 768px) {
+		.testing-methodology-grid {
 			grid-template-columns: 1fr;
 		}
 	}

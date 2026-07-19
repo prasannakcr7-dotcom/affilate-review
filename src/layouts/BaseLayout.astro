@@ -40,15 +40,18 @@ const cleanPath = pathname.replace(/^\/in(\/|$)/, '/');
 const siteUrl = Astro.site ? Astro.site.origin : 'https://example.com';
 const usUrl = `${siteUrl}${cleanPath === '/' ? '' : cleanPath}`;
 const inUrl = `${siteUrl}/in${cleanPath === '/' ? '' : cleanPath}`;
+
+// Only output US/x-default hreflang tags if the page is shared across both regions
+const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.replace(/\/$/, ''));
 ---
 
 <!doctype html>
 <html lang="en" data-theme="light">
 	<head>
 		<BaseHead title={title} description={description} image={image} />
-		<link rel="alternate" hreflang="en-US" href={usUrl} />
+		{isSharedPage && <link rel="alternate" hreflang="en-US" href={usUrl} />}
 		<link rel="alternate" hreflang="en-IN" href={inUrl} />
-		<link rel="alternate" hreflang="x-default" href={usUrl} />
+		{isSharedPage && <link rel="alternate" hreflang="x-default" href={usUrl} />}
 		{schemaJson && <script type="application/ld+json" set:html={JSON.stringify(schemaJson)}></script>}
 		<script is:inline>
 			const storedTheme = localStorage.getItem('theme');
