@@ -61,14 +61,15 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 	<body>
 		<a class="skip-link" href="#main-content">Skip to content</a>
 		<header class="site-header">
+			<div class="header-accent-rule"></div>
 			<div class="site-container header-row">
 				<a class="brand" href={getLocalizedPath('/', country)} aria-label={`${SITE_TITLE} home`}>
 					<svg class="brand-logo" width="42" height="42" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-						<rect width="200" height="200" rx="36" fill="#14213D"/>
+						<rect width="200" height="200" rx="36" fill="var(--icon-bg)"/>
 						<!-- back frame -->
-						<rect x="58" y="58" width="64" height="64" rx="8" fill="none" stroke="#9AA4C4" stroke-width="7"/>
+						<rect x="58" y="58" width="64" height="64" rx="8" fill="none" stroke="var(--header-rule)" stroke-width="7"/>
 						<!-- front frame, offset down-right -->
-						<rect x="78" y="78" width="64" height="64" rx="8" fill="#14213D" stroke="#EAE7DD" stroke-width="7"/>
+						<rect x="78" y="78" width="64" height="64" rx="8" fill="var(--icon-bg)" stroke="var(--header-bg)" stroke-width="7"/>
 					</svg>
 					<span class="brand-text">
 						<span class="brand-title"><span class="brand-second">TheSecond</span><span class="brand-look">Look</span></span>
@@ -183,6 +184,28 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 
 	:global(:root) {
 		color-scheme: light;
+		
+		/* CSS Variables for Header & Themes */
+		--header-bg: #FAF8F3;
+		--header-border: #E0DCD0;
+		--header-rule: #E3120B;
+		--header-accent: #E3120B;
+		--header-text-primary: #1A1A1A;
+		--header-text-secondary: #7A756B;
+		--header-nav-inactive: #3A3A3A;
+		--icon-bg: #1A1A1A;
+		--icon-fg: #FAF8F3;
+		--search-bg: rgba(0,0,0,0.05);
+		--search-placeholder: #7A756B;
+
+		/* Requested Content Colors */
+		--link-color: #1A56DB;
+		--category-tag-color: #6B6B66;
+		--divider-color: #1A1A1A;
+		--ar-badge-bg: #D97706;
+		--ar-badge-fg: #ffffff;
+
+		/* Remapped site variables for consolidated hierarchy */
 		--ar-bg: #fbfaf7;
 		--ar-page: #ffffff;
 		--ar-soft: #f1eee8;
@@ -190,21 +213,42 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		--ar-text: #111116;
 		--ar-muted: #5f5b66;
 		--ar-border: #ded8cf;
-		--ar-link: #075fc7;
+		--ar-link: var(--link-color);
 		--ar-header: #321735;
 		--ar-nav: #0b4d5a;
-		--ar-rule: #c35f2a;
-		--ar-accent: #e76f22;
+		--ar-rule: var(--divider-color);
+		--ar-accent: var(--category-tag-color);
 		--ar-accent-dark: #b94d12;
 		--ar-score: #0e8a83;
-		--ar-score-alt: #5b6fb1;
+		--ar-score-alt: var(--link-color);
 		--ar-panel: #fff3dc;
+
 		--ar-font-ui: Atkinson, Arial, Helvetica, sans-serif;
 		--ar-font-serif: CleanAmpersand, 'Playfair Display', 'Lora', Georgia, serif;
 	}
 
 	:global(html[data-theme='dark']) {
 		color-scheme: dark;
+
+		/* CSS Variables for Dark Mode Header */
+		--header-bg: #151515;
+		--header-border: #2E2E2E;
+		--header-rule: #E3120B;
+		--header-accent: #FF4C3F;
+		--header-text-primary: #F0EEE8;
+		--header-text-secondary: #8A8A85;
+		--header-nav-inactive: #B8B6AE;
+		--icon-bg: #F7F5F0;
+		--icon-fg: #151515;
+		--search-bg: rgba(255,255,255,0.08);
+		--search-placeholder: #8A8A85;
+
+		/* Dark Mode Content Colors */
+		--link-color: #76A9FA;
+		--category-tag-color: #8A8A85;
+		--divider-color: #2E2E2E;
+
+		/* Remapped site variables for Dark Mode */
 		--ar-bg: #121018;
 		--ar-page: #191622;
 		--ar-soft: #24202d;
@@ -212,14 +256,14 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		--ar-text: #faf7ef;
 		--ar-muted: #c8c0d2;
 		--ar-border: #3a3347;
-		--ar-link: #86c5ff;
+		--ar-link: var(--link-color);
 		--ar-header: #1a0d24;
 		--ar-nav: #08363f;
-		--ar-rule: #f28c45;
-		--ar-accent: #ff9b42;
+		--ar-rule: var(--divider-color);
+		--ar-accent: var(--category-tag-color);
 		--ar-accent-dark: #e67721;
 		--ar-score: #24a99f;
-		--ar-score-alt: #8797e8;
+		--ar-score-alt: var(--link-color);
 		--ar-panel: #271f2f;
 	}
 
@@ -283,9 +327,16 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 	}
 
 	.site-header {
-		background: #14213D;
-		color: #ffffff;
+		background: var(--header-bg);
+		color: var(--header-text-primary);
+		border-bottom: 1px solid var(--header-border);
 		position: relative;
+	}
+
+	.header-accent-rule {
+		height: 4px;
+		background: var(--header-rule);
+		width: 100%;
 	}
 
 	.header-row {
@@ -300,7 +351,7 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		display: inline-flex;
 		align-items: center;
 		gap: 0.65rem;
-		color: #ffffff;
+		color: var(--header-text-primary);
 		text-decoration: none;
 	}
 
@@ -323,26 +374,27 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		line-height: 1;
 		display: flex;
 		align-items: baseline;
+		color: var(--header-text-primary);
 	}
 
 	.brand-second {
-		color: #FFFFFF;
+		color: var(--header-text-primary);
 		font-weight: 400;
 	}
 
 	.brand-look {
-		color: #FFFFFF;
+		color: var(--header-text-primary);
 		font-weight: 700;
 	}
 
 	.brand-tagline {
-		color: #FFFFFF;
-		font-size: 11px;
+		color: var(--header-text-secondary);
+		font-size: 10px;
 		font-weight: 400;
 		text-transform: none;
 		line-height: 1.2;
 		margin-top: 0.15rem;
-		opacity: 0.75;
+		opacity: 1;
 	}
 
 	.category-nav {
@@ -359,39 +411,33 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		gap: 1.15rem;
 	}
 
-	.category-links a {
-		color: #FFFFFF;
+	.category-links a,
+	.home-link {
+		color: var(--header-nav-inactive);
 		font-size: 0.93rem;
 		font-weight: 500;
 		text-decoration: none;
 		padding: 0.35rem 0;
 		border-bottom: 2px solid transparent;
-		transition: border-color 150ms ease;
-	}
-
-	.category-links a:hover {
-		color: #FFFFFF;
-	}
-
-	.category-links a.active {
-		color: #FFFFFF;
-		font-weight: 600;
-		border-bottom: 2px solid #FFFFFF;
-		padding-bottom: 5px;
+		transition: border-color 150ms ease, color 150ms ease;
 	}
 
 	.home-link {
-		color: #FFFFFF;
-		display: flex;
+		display: inline-flex;
 		align-items: center;
-		padding: 0.35rem 0;
-		border-bottom: 2px solid transparent;
-		transition: border-color 150ms ease;
 	}
 
+	.category-links a:hover,
+	.home-link:hover {
+		color: var(--header-accent);
+	}
+
+	.category-links a.active,
 	.home-link.active {
-		border-bottom: 2px solid #FFFFFF;
-		padding-bottom: 5px;
+		color: var(--header-accent);
+		font-weight: 700;
+		border-bottom: 2px solid var(--header-accent);
+		padding-bottom: 3px;
 	}
 
 	.home-link svg {
@@ -411,8 +457,8 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		align-items: center;
 		width: 11.5rem;
 		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.08);
-		color: #FFFFFF;
+		background: var(--search-bg);
+		color: var(--header-text-primary);
 		padding: 0.28rem 0.62rem 0.28rem 0.75rem;
 	}
 
@@ -420,15 +466,15 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		width: 100%;
 		border: 0;
 		background: transparent;
-		color: #FFFFFF;
+		color: var(--header-text-primary);
 		font: inherit;
 		font-size: 0.86rem;
 		outline: 0;
 	}
 
 	.search-form input::placeholder {
-		color: #FFFFFF;
-		opacity: 0.7;
+		color: var(--search-placeholder);
+		opacity: 1;
 	}
 
 	.search-form svg {
@@ -442,12 +488,17 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		width: 2.15rem;
 		height: 2.15rem;
 		place-items: center;
-		border: 1px solid rgba(255, 255, 255, 0.42);
+		border: 1px solid var(--header-border);
 		border-radius: 999px;
-		background: rgba(255, 255, 255, 0.12);
-		color: #ffffff;
+		background: transparent;
+		color: var(--header-text-primary);
 		cursor: pointer;
 		padding: 0;
+		transition: background 150ms ease;
+	}
+
+	.theme-toggle:hover {
+		background: var(--search-bg);
 	}
 
 	.theme-toggle svg {
@@ -461,12 +512,19 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		stroke-width: 2;
 	}
 
-	.moon-icon,
-	:global(html[data-theme='dark']) .sun-icon {
+	.theme-toggle .sun-icon {
+		display: block;
+	}
+
+	.theme-toggle .moon-icon {
 		display: none;
 	}
 
-	:global(html[data-theme='dark']) .moon-icon {
+	:global(html[data-theme='dark']) .theme-toggle .sun-icon {
+		display: none;
+	}
+
+	:global(html[data-theme='dark']) .theme-toggle .moon-icon {
 		display: block;
 	}
 
@@ -474,7 +532,7 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 		display: none;
 		background: transparent;
 		border: none;
-		color: #FFFFFF;
+		color: var(--header-text-primary);
 		cursor: pointer;
 		padding: 0.25rem;
 		align-items: center;
@@ -551,8 +609,8 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 			top: 100%;
 			left: 0;
 			right: 0;
-			background: #14213D;
-			border-top: 1px solid rgba(255, 255, 255, 0.08);
+			background: var(--header-bg);
+			border-top: 1px solid var(--header-border);
 			padding: 1rem 1.5rem;
 			flex-direction: column;
 			align-items: flex-start;
@@ -569,8 +627,8 @@ const isSharedPage = ['/', '/about', '/contact', '/terms'].includes(cleanPath.re
 
 		.category-links a.active {
 			border-bottom: none;
-			color: #FFFFFF;
-			font-weight: 600;
+			color: var(--header-accent);
+			font-weight: 700;
 		}
 
 		:global(.site-header.nav-open) .category-links {

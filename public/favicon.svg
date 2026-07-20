@@ -1,8 +1,8 @@
 <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TheSecondLook icon">
   <title>TheSecondLook icon - overlapping frames</title>
-  <rect width="200" height="200" rx="36" fill="#14213D"/>
+  <rect width="200" height="200" rx="36" fill="#1A1A1A"/>
   <!-- back frame -->
-  <rect x="58" y="58" width="64" height="64" rx="8" fill="none" stroke="#9AA4C4" stroke-width="7"/>
+  <rect x="58" y="58" width="64" height="64" rx="8" fill="none" stroke="#E3120B" stroke-width="7"/>
   <!-- front frame, offset down-right, suggesting a second look at the same subject -->
-  <rect x="78" y="78" width="64" height="64" rx="8" fill="#14213D" stroke="#EAE7DD" stroke-width="7"/>
+  <rect x="78" y="78" width="64" height="64" rx="8" fill="#1A1A1A" stroke="#FAF8F3" stroke-width="7"/>
 </svg>
